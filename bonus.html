@@ -170,6 +170,7 @@
             void main() {
                 vColor = color;
                 vec3 pos = position;
+                // Rotation logic
                 float angle = uTime * aSpeed;
                 float x = pos.x * cos(angle) - pos.z * sin(angle);
                 float z = pos.x * sin(angle) + pos.z * cos(angle);
@@ -375,9 +376,11 @@
 
                 this.galaxy = new THREE.Points(geometry, this.galaxyMaterial);
                 this.galaxy.rotation.x = Math.PI / 3; 
-                // Start further back
+                
+                // ADJUSTED POSITIONS FOR BETTER FLIGHT
                 this.galaxy.position.z = -150; 
-                this.galaxy.position.y = -20;
+                this.galaxy.position.y = -2; // Raised to fly INTO center
+                
                 this.scene.add(this.galaxy);
             }
 
@@ -431,12 +434,13 @@
                 const ctx = canvas.getContext('2d');
                 const baseColor = this.getFingerColor(char);
                 
-                // FIX: Make letters brighter by using solid color instead of gradient to black
-                ctx.fillStyle = baseColor; 
-                ctx.fillRect(0,0,256,256);
-                
+                // Solid Color for better visibility
+                ctx.fillStyle = baseColor; ctx.fillRect(0,0,256,256);
                 ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 15; ctx.strokeRect(0,0,256,256);
-                ctx.fillStyle = '#ffffff'; ctx.font = "bold 100px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(displayStr, 128, 128);
+                
+                // BLACK Text for contrast
+                ctx.fillStyle = '#000000'; 
+                ctx.font = "bold 100px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(displayStr, 128, 128);
 
                 const mat = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true, opacity: 0.9 });
                 const geo = new THREE.BoxGeometry(2.5 * sizeScale, 2.5 * sizeScale, 2.5 * sizeScale);
@@ -485,21 +489,21 @@
                 const delta = this.clock.getDelta();
                 const time = this.clock.getElapsedTime();
 
-                // 1. ANIMATE GALAXY (DEEPER FLYTHROUGH)
+                // 1. ANIMATE GALAXY
                 if(this.galaxyMaterial && this.galaxy) {
                     let spinSpeed = 0.2;
                     if(time > 60) spinSpeed = 2.0; 
                     this.galaxyMaterial.uniforms.uTime.value = time * spinSpeed;
 
-                    // Fly from -150 to +100 over 60s (Camera is at +25)
+                    // Fly Closer Logic: -150 to +25 (Camera is at +25)
+                    // This puts the player EXACTLY inside the cloud at 60s
                     if(time < 60) {
-                        this.galaxy.position.z = -150 + (time / 60) * 250; 
+                        this.galaxy.position.z = -150 + (time / 60) * 175; 
                     } else {
-                        this.galaxy.position.z = 100;
+                        this.galaxy.position.z = 25; // Stop inside
                     }
                 }
                 
-                // 2. Camera Shake
                 if (this.shakeIntensity > 0) {
                     const rx = (Math.random() - 0.5) * this.shakeIntensity;
                     const ry = (Math.random() - 0.5) * this.shakeIntensity;
@@ -725,8 +729,6 @@
                 if (this.score > currentHigh) {
                     localStorage.setItem(`tastenZauber_bonusHighScore_${currentUser}`, this.score);
                 }
-                // Update UI immediately to show new score
-                this.updateHighscoreUI();
             }
         }
 
