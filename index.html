@@ -1,410 +1,636 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hedy's TastenZauber</title>
-    
+    <title>Cosmic Key-Guardian: BONUS</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;600&display=swap" rel="stylesheet">
-
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        /* --- CSS STYLING --- */
-        :root { --primary: #FF9AA2; --secondary: #B5EAD7; --accent: #FFB7B2; --text: #6d5c6d; --dark: #4A404F; --keyboard-bg: rgba(255, 255, 255, 0.85); --key-bg: #fff; --key-active: #C7CEEA; --key-error: #FFF176; --btn-inactive: #e0e0e0; --gold: #FFD700; }
-        body { margin: 0; overflow: hidden; font-family: 'Fredoka', sans-serif; background-color: #E2F0CB; color: var(--text); user-select: none; }
-        #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; transition: filter 0.3s; }
-        #global-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 90; background: linear-gradient(120deg, #FF9AA2, #FFB7B2, #FFDAC1, #E2F0CB, #B5EAD7, #C7CEEA); background-size: 400% 400%; animation: rainbowBG 15s ease infinite; pointer-events: none; transition: filter 0.5s; }
-        @keyframes rainbowBG { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
-        .rainbow-spin { animation: rainbowSpin 1s linear infinite !important; filter: hue-rotate(90deg) contrast(1.5); }
-        @keyframes rainbowSpin { 0% { background-position: 0% 50%; } 100% { background-position: 400% 50%; } }
-        #bg-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0.4; }
-        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; }
-        .ui-element { pointer-events: auto; }
-        header { padding: 15px; display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.3); backdrop-filter: blur(5px); }
-        .header-left, .header-right { display: flex; gap: 10px; align-items: center; }
-        .vol-control { display: flex; flex-direction: column; align-items: center; margin-right: 10px; }
-        .vol-control input { width: 80px; cursor: pointer; }
-        .vol-control span { font-size: 0.8rem; font-weight: bold; }
-        .score-box { background: white; padding: 5px 15px; border-radius: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); font-size: 1.1rem; font-weight: 600; display: flex; gap: 10px; align-items: center; }
-        .progress-container { width: 200px; height: 15px; background: rgba(200,200,200,0.3); border-radius: 10px; overflow: hidden; }
-        .progress-bar { height: 100%; background: linear-gradient(90deg, #FF9AA2, #FFB7B2); width: 0%; transition: width 0.2s; }
-        #target-display { position: absolute; top: 15%; left: 50%; transform: translate(-50%, 0); text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; }
-        #current-char { order: 1; font-size: 10rem; color: white; text-shadow: 0 4px 15px rgba(0,0,0,0.2); font-weight: bold; line-height: 1; animation: float 3s ease-in-out infinite; }
-        .char-appear { animation: popInChar 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards !important; }
-        @keyframes popInChar { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
-        .particle { position: absolute; width: 10px; height: 10px; border-radius: 50%; pointer-events: none; z-index: 100; }
-        .particle.star { clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); background: gold; }
-        #next-chars { order: 2; font-size: 2rem; color: rgba(255,255,255,0.9); letter-spacing: 5px; background: rgba(0, 0, 0, 0.2); padding: 5px 20px; border-radius: 20px; backdrop-filter: blur(2px); }
-        #keyboard-wrapper { margin-bottom: 30px; display: flex; justify-content: center; width: 100%; }
-        .keyboard { background: var(--keyboard-bg); padding: 20px; border-radius: 25px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); backdrop-filter: blur(5px); display: flex; flex-direction: column; gap: 8px; width: 950px; transition: width 0.3s; }
-        .keyboard.macbook { width: 1100px; } 
-        .row { display: flex; justify-content: center; gap: 8px; }
-        .key { width: 52px; height: 52px; background: var(--key-bg); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.1rem; box-shadow: 0 4px 0 #ddd; color: var(--dark); transition: all 0.1s; position: relative; }
-        .key.wide { width: 80px; } .key.space { width: 350px; } .key.cmd { width: 70px; font-size: 0.9rem; }
-        .key.active { background: var(--primary) !important; color: white !important; box-shadow: 0 3px 0 #D68C94 !important; transform: translateY(2px); border: 2px solid white; }
-        .key.pressed { transform: translateY(4px); box-shadow: 0 0 0 #ddd; }
-        .key.error-flash { background-color: var(--key-error) !important; box-shadow: 0 0 10px var(--key-error); transform: scale(1.1); transition: all 0.1s; }
-        .keyboard.fingers .key { border-bottom: 3px solid rgba(0,0,0,0.1); }
-        .keyboard.fingers .f-pinky { background-color: #FFCDD2; } .keyboard.fingers .f-ring { background-color: #FFE0B2; } .keyboard.fingers .f-mid { background-color: #FFF9C4; } .keyboard.fingers .f-idx-l { background-color: #C8E6C9; } .keyboard.fingers .f-idx-r { background-color: #B3E5FC; } .keyboard.fingers .hand-split { border-right: 2px dashed #999; margin-right: 4px; }
-        .overlay-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 100; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
-        #start-screen { background: transparent; } #level-screen { background: transparent; } #modal-screen { background: transparent !important; }
-        .hidden { display: none !important; }
-        h1 { font-size: 4rem; color: var(--primary); margin: 0; text-shadow: 2px 2px 0 #fff; }
-        #start-screen h1, #level-screen h1, #modal-screen h1 { color: white; text-shadow: 0 4px 10px rgba(0,0,0,0.2); }
-        #start-screen h2 { color: white; text-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .btn { background: var(--secondary); border: none; padding: 12px 30px; border-radius: 50px; font-size: 1.3rem; font-family: 'Fredoka', sans-serif; font-weight: bold; color: var(--dark); cursor: pointer; margin: 8px; box-shadow: 0 4px 0 #8AC6B3; transition: transform 0.1s; }
-        .btn:hover { transform: scale(1.05); } .btn:active { transform: scale(0.95) translateY(4px); box-shadow: none; }
-        .btn.small { padding: 8px 15px; font-size: 0.9rem; box-shadow: 0 2px 0 #8AC6B3; }
-        .btn.toggle-on { background: var(--secondary); } .btn.toggle-off { background: var(--btn-inactive); color: #888; box-shadow: 0 2px 0 #ccc; }
-        .user-switch { display: flex; gap: 10px; margin-bottom: 20px; background: rgba(255,255,255,0.5); padding: 5px; border-radius: 30px; backdrop-filter: blur(5px); }
-        .user-btn { padding: 10px 30px; border-radius: 25px; border: none; cursor: pointer; font-weight: bold; font-size: 1.2rem; background: transparent; color: #fff; transition: all 0.2s; text-shadow: 0 1px 2px rgba(0,0,0,0.1); }
-        .user-btn.active { background: white; color: var(--primary); box-shadow: 0 2px 5px rgba(0,0,0,0.1); text-shadow: none; }
-        .star-header { background: white; padding: 10px 25px; border-radius: 50px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); font-size: 1.4rem; font-weight: bold; color: var(--dark); display: flex; align-items: center; gap: 15px; }
-        .star-header span { display: flex; align-items: center; gap: 5px; }
-        .star-header .gold { color: gold; text-shadow: 0 1px 1px rgba(0,0,0,0.2); }
-        .level-grid { display: flex; flex-direction: column; gap: 20px; margin-top: 10px; max-height: 55vh; overflow-y: auto; padding: 15px; width: 85%; }
-        .level-block { background: rgba(255,255,255,0.3); padding: 15px; border-radius: 20px; backdrop-filter: blur(5px); }
-        .level-block-title { font-size: 1.5rem; color: white; margin-bottom: 10px; text-shadow: 0 1px 2px rgba(0,0,0,0.2); text-align: left; padding-left: 10px; display: flex; justify-content: space-between; align-items: center; }
-        .level-block-content { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
-        .level-btn { background: #fff; border: 3px solid rgba(0,0,0,0.05); padding: 10px; border-radius: 15px; cursor: pointer; transition: all 0.2s; font-size: 0.9rem; box-shadow: 0 4px 10px rgba(0,0,0,0.05); opacity: 0.9; position: relative; overflow: hidden; }
-        .level-btn:hover { transform: scale(1.05); opacity: 1; z-index: 10; box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
-        .level-btn.active-level { border: 4px solid #fff; transform: scale(1.1); z-index: 2; box-shadow: 0 0 15px rgba(255,255,255,0.8); }
-        .level-btn.locked { filter: grayscale(1); opacity: 0.6; cursor: not-allowed; pointer-events: none; }
-        .level-btn.locked::after { content: "🔒"; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 2rem; opacity: 0.5; }
-        .level-stars { color: gold; font-size: 1rem; text-shadow: 0 1px 1px rgba(0,0,0,0.2); }
-        .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; text-align: left; background: white; padding: 30px; border-radius: 30px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); max-height: 70vh; overflow-y: auto; width: 700px; }
-        .setting-group label { font-weight: bold; color: var(--primary); }
-        select { width: 100%; padding: 8px; border-radius: 8px; border: 2px solid var(--secondary); font-family: 'Fredoka', sans-serif; }
-        .grid-full { grid-column: span 2; border-top: 1px solid #eee; padding-top: 10px; }
-        #level-flash { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 6rem; color: var(--primary); font-weight: bold; opacity: 0; pointer-events: none; z-index: 200; text-shadow: 2px 2px 0 #fff, 0 0 20px rgba(255,255,255,0.8); text-align: center; width: 100%; transition: opacity 0.5s; display: flex; flex-direction: column; align-items: center;}
-        #flash-countdown { font-size: 4rem; color: #4A404F; margin-top: 10px; }
-        #minigame-ui { position: absolute; top: 20px; right: 20px; z-index: 60; }
-        .result-stats { width: 500px; background: rgba(255,255,255,0.95); padding: 20px; border-radius: 20px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); backdrop-filter: blur(5px); }
-        .bar-bg { width: 100%; height: 15px; background: #eee; border-radius: 10px; overflow: hidden; }
-        .bar-fill { height: 100%; width: 0%; transition: width 1s ease-out; }
-        .bar-fill.green { background-color: #4CAF50; } .bar-fill.blue { background-color: #42A5F5; }
-        .result-text-box { width: 100%; height: 80px; overflow-y: auto; background: #f4f4f4; border-radius: 10px; padding: 10px; margin-top: 15px; text-align: left; font-family: monospace; font-size: 1.1rem; border: 2px solid #eee; white-space: pre-wrap; }
-        .res-char.correct { color: #4CAF50; } .res-char.wrong { color: #FF5252; text-decoration: line-through; font-weight: bold; }
-        .result-stars { font-size: 4rem; margin: 10px 0; display: inline-block; }
-        .pop-stars { animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; text-shadow: 0 0 20px gold, 0 0 10px orange; }
-        .five-stars { color: var(--gold); animation: pulseGold 1s infinite; text-shadow: 0 0 30px var(--gold); }
-        @keyframes pulseGold { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
-        @keyframes popIn { 0% { transform: scale(0); opacity: 0; } 70% { transform: scale(1.2); } 100% { transform: scale(1); opacity: 1; } }
-        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-        .shake { animation: shake 0.3s; }
-        @keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } 100% { transform: translateX(0); } }
+        :root {
+            --neon-blue: #00f3ff;
+            --neon-pink: #ff00ff;
+            --neon-green: #00ff9d;
+            --neon-yellow: #ffee00;
+            --bg-dark: #050510;
+        }
+        body { margin: 0; overflow: hidden; background: var(--bg-dark); font-family: 'Orbitron', sans-serif; user-select: none; }
+        
+        #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+
+        /* UI OVERLAY */
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; display: flex; flex-direction: column; justify-content: space-between; padding: 25px; box-sizing: border-box;}
+        
+        .hud-top { display: flex; justify-content: space-between; align-items: flex-start; text-shadow: 0 0 10px var(--neon-blue); }
+        .hud-group { display: flex; flex-direction: column; gap: 5px; }
+        .score-box { color: white; font-size: 2.5rem; font-weight: 900; }
+        .score-label { font-size: 0.9rem; color: var(--neon-blue); opacity: 0.8; letter-spacing: 2px;}
+        .lives-box { font-size: 2rem; color: #ff3333; text-shadow: 0 0 15px red; }
+        
+        .weapon-badge {
+            background: rgba(0, 243, 255, 0.1); border: 2px solid var(--neon-blue);
+            padding: 10px 20px; border-radius: 0 15px 0 15px; color: white;
+            font-size: 1.2rem; margin-top: 10px; text-align: center;
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.2);
+        }
+
+        .combo-meter {
+            position: absolute; top: 120px; left: 25px;
+            width: 300px; height: 15px; background: rgba(255,255,255,0.1);
+            border: 2px solid var(--neon-pink); transform: skewX(-20deg);
+            overflow: hidden;
+        }
+        .combo-fill { height: 100%; background: linear-gradient(90deg, var(--neon-pink), var(--neon-yellow)); width: 0%; transition: width 0.1s; box-shadow: 0 0 20px var(--neon-pink); }
+        .combo-text { font-size: 1.8rem; color: var(--neon-yellow); margin-top: 5px; font-weight: 900; opacity: 0; transition: opacity 0.2s; position: absolute; top: 140px; left: 25px; transform: skewX(-10deg); text-shadow: 0 0 10px orange; }
+
+        .center-crosshair {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 60px; height: 60px; border: 2px dashed rgba(255,255,255,0.2); border-radius: 50%;
+            pointer-events: none; opacity: 0.3;
+        }
+
+        /* MENUS */
+        .overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(5, 5, 16, 0.85); backdrop-filter: blur(8px);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 20; pointer-events: auto;
+            transition: opacity 0.3s;
+        }
+        .hidden { opacity: 0; pointer-events: none; }
+        
+        h1 { 
+            font-size: 5rem; margin: 0; color: white; 
+            text-shadow: 0 0 20px var(--neon-blue), 4px 4px 0px var(--neon-pink);
+            letter-spacing: 8px; text-transform: uppercase; 
+            animation: floatText 3s ease-in-out infinite;
+            text-align: center;
+        }
+        @keyframes floatText { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
+        h2 { color: var(--neon-green); font-family: 'Roboto Mono', monospace; font-size: 1.4rem; margin-bottom: 40px; text-align: center; }
+        
+        .btn {
+            background: linear-gradient(90deg, var(--neon-pink), #9d00ff);
+            border: none; padding: 20px 50px; color: white; font-family: 'Orbitron', sans-serif;
+            font-size: 1.8rem; font-weight: bold; cursor: pointer;
+            clip-path: polygon(10% 0, 100% 0, 100% 70%, 90% 100%, 0 100%, 0 30%);
+            transition: all 0.2s; margin: 15px; text-transform: uppercase;
+            box-shadow: 0 0 30px rgba(255, 0, 255, 0.4); text-shadow: 2px 2px 0 rgba(0,0,0,0.5);
+        }
+        .btn:hover { transform: scale(1.05) translateY(-2px); box-shadow: 0 0 50px rgba(255, 0, 255, 0.8); filter: brightness(1.2); }
+        .btn:active { transform: scale(0.98); }
+        
+        #upgrade-notif {
+            position: absolute; bottom: 25%; left: 50%; transform: translateX(-50%);
+            color: var(--neon-yellow); font-size: 4rem; font-weight: 900;
+            text-shadow: 0 0 30px orange, 0 0 60px red; 
+            opacity: 0; transition: opacity 0.5s, transform 0.5s;
+            pointer-events: none; white-space: nowrap; z-index: 15;
+        }
+        .paused-text { color: white; font-size: 3rem; margin-bottom: 30px; letter-spacing: 5px; }
     </style>
 </head>
 <body>
+
     <div id="canvas-container"></div>
-    <div id="global-bg"><canvas id="bg-canvas"></canvas></div>
-    <div id="level-flash"><div id="flash-title">Level 1</div><div id="flash-countdown"></div></div>
-    <div id="ui-layer" class="hidden">
-        <header class="ui-element">
-            <div class="header-left"><button class="btn small" id="btn-menu">🏠 Level 1</button><button class="btn small" id="btn-options">🔧 Optionen</button></div>
-            <div class="header-right">
-                <div class="vol-control"><span>🎵 Musik</span><input type="range" id="vol-music" min="0" max="100" value="80"></div>
-                <div class="vol-control"><span>🔊 Effekte</span><input type="range" id="vol-sfx" min="0" max="100" value="20"></div>
-                <div class="score-box"><span>⭐ <span id="score-val">0</span></span><div class="progress-container"><div class="progress-bar" id="prog-bar"></div></div></div>
-                <button class="btn small toggle-off" id="btn-loop">🔁 Loop</button>
-                <button class="btn small toggle-on" id="btn-bonus">🎁 Bonus</button>
+    <audio id="bgm" src="bonus.mp3" loop></audio>
+
+    <div id="ui-layer">
+        <div class="hud-top">
+            <div class="hud-group">
+                <span class="score-label">SCORE</span>
+                <div class="score-box" id="hud-score">0</div>
+                <div class="weapon-badge" id="hud-weapon">LASER MK-1</div>
             </div>
-        </header>
-        <div id="target-display"><div id="current-char">Start!</div><div id="next-chars"></div></div>
-        <div id="keyboard-wrapper" class="ui-element"><div class="keyboard" id="onscreen-keyboard"></div></div>
+            <div class="hud-group" style="align-items: flex-end;">
+                <span class="score-label">LIVES</span>
+                <div class="lives-box" id="hud-lives">❤️❤️❤️</div>
+                <div style="margin-top:10px; color: #888; font-size: 0.8rem;">[ESC] PAUSE</div>
+            </div>
+        </div>
+        
+        <div class="combo-meter">
+            <div class="combo-fill" id="combo-bar"></div>
+        </div>
+        <div class="combo-text" id="combo-text">COMBO x2!</div>
+        <div class="center-crosshair"></div>
+        
+        <div id="upgrade-notif">WEAPON UPGRADE!</div>
     </div>
-    <div id="start-screen" class="overlay-screen"><h1>Hedy's TastenZauber</h1><h2>Lerne Tippen mit dem magischen Fuchs!</h2><button class="btn" id="btn-start-game">Los geht's! (Enter)</button></div>
-    <div id="level-screen" class="overlay-screen hidden"><h1>Level Auswahl</h1><div class="user-switch"><button class="user-btn active" id="user-hedy">Hedy</button><button class="user-btn" id="user-keno">Keno</button></div><div id="star-summary" class="star-header"><span>Gesamt: <span class="gold">⭐</span> <span id="total-stars-val">0</span></span><span style="font-size: 1rem; opacity: 0.8;">|</span><span id="next-unlock-info">Nächstes Ziel: 30 ⭐</span></div><div class="level-grid" id="level-container"></div></div>
-    <div id="options-screen" class="overlay-screen hidden" style="background: rgba(255,255,255,0.95);"><h1>Optionen</h1><div class="settings-grid">
-        <div class="setting-group"><label>⌨️ Layout</label><select id="sel-kb-layout"><option value="simple">Einfach</option><option value="macbook" selected>MacBook</option></select></div>
-        <div class="setting-group"><label>🎨 Farben</label><select id="sel-kb-color"><option value="standard">Weiß</option><option value="fingers" selected>Bunt</option></select></div>
-        <div class="setting-group"><label>⚠️ Fehler</label><select id="sel-kb-error"><option value="subtle">Dezent</option><option value="flash" selected>Aufleuchten</option></select></div>
-        <div class="setting-group"><label>💥 Effekt</label><select id="sel-expl"><option value="on">Standard</option><option value="ultra">ULTRA 🔥</option><option value="grow" selected>Grow 🌱</option><option value="off">Aus</option></select></div>
-        <div class="setting-group"><label>🤸 Animation</label><select id="sel-anim"><option value="jump">Springen</option><option value="chase">Jagd</option><option value="spin">Drehen</option><option value="wink">Zwinkern</option><option value="mouth">Sprechen</option><option value="grow">Wachsen</option><option value="shrink">Schrumpfen</option><option value="random">Zufall</option></select></div>
-        <div class="setting-group"><label>🔊 Sound</label><select id="sel-sfx"><option value="click" selected>Klick</option><option value="piano">Piano</option><option value="8bit">8-Bit</option><option value="bubble">Blubber</option><option value="magic">Magie</option><option value="robot">Roboter</option><option value="off">Aus</option></select></div>
-        <div class="setting-group"><label>🎵 Musik</label><select id="sel-bgm"><option value="keychill" selected>KeyChill (MP3)</option><option value="lullaby">Lullaby</option><option value="off">Aus</option></select></div>
-        <div class="setting-group"><label>🦄 Tier</label><select id="sel-mascot"><option value="fox">Fuchs</option><option value="unicorn">Einhorn</option><option value="bear">Bär</option><option value="bunny">Hase</option><option value="cat">Katze</option><option value="dog_billy">Billy</option><option value="robot">Roboter</option><option value="random">Zufall</option></select></div>
-        <div class="setting-group"><label>🌍 Welt</label><select id="sel-theme"><option value="forest">Wald</option><option value="candy">Süß</option><option value="ice">Eis</option><option value="space">All</option><option value="underwater">Meer</option><option value="random">Zufall</option></select></div>
-    </div><button class="btn" id="btn-close-options">Zurück</button></div>
-    <div id="pause-screen" class="overlay-screen hidden"><h1>Pause</h1><button class="btn" id="btn-resume">Weiter (Esc)</button><button class="btn small" id="btn-quit">Zum Menü</button></div>
-    <div id="modal-screen" class="overlay-screen hidden"><h1 id="modal-title">Super!</h1><div class="result-stars" id="result-stars"></div><div class="result-stats"><div class="stat-row"><div class="stat-label"><span>Tempo</span> <span id="lbl-speed"></span></div><div class="bar-bg"><div class="bar-fill green" id="bar-speed"></div></div></div><div class="stat-row"><div class="stat-label"><span>Genauigkeit</span> <span id="lbl-acc"></span></div><div class="bar-bg"><div class="bar-fill blue" id="bar-acc"></div></div></div><div class="stat-row"><div class="stat-label"><span>Dein Text:</span></div><div class="result-text-box" id="result-text-display"></div></div></div><button class="btn" id="btn-modal-action">Weiter (Enter)</button><button class="btn" id="btn-repeat-level" style="margin-left:5px;">Wiederholen</button><button class="btn small" id="btn-direct-next" style="margin-top: 5px; background-color: rgba(255,255,255,0.8);">Zu Level X</button></div>
+
+    <div id="start-screen" class="overlay">
+        <h1>Neon Type Blaster</h1>
+        <h2>Save the Galaxy. One Keystroke at a time.</h2>
+        <button class="btn" id="btn-start">DEPLOY SHIP</button>
+        <button class="btn" id="btn-return-main" style="background: #444; font-size: 1rem; margin-top: 30px;">Return to Main Game</button>
+    </div>
+
+    <div id="pause-screen" class="overlay hidden">
+        <div class="paused-text">SYSTEM PAUSED</div>
+        <button class="btn" id="btn-resume">RESUME (ESC)</button>
+        <button class="btn" id="btn-quit" style="font-size: 1rem; background: #444; padding: 10px 20px;">BACK TO BASE</button>
+    </div>
+
+    <div id="gameover-screen" class="overlay hidden">
+        <h1 style="color: #ff3333; text-shadow: 0 0 30px red;">MISSION FAILED</h1>
+        <h2 id="final-score-disp">Score: 0</h2>
+        <button class="btn" id="btn-return">RETURN TO HEDY'S WORLD</button>
+    </div>
 
     <script>
-        // ... (LEVELS data remains the same) ...
-        const generateLevels = () => {
-             const levels = [];
-             const add = (id, name, keys, content) => levels.push({ id, name, keys, content });
-             // Shortened for brevity in this display, assumes you have the full list
-             add(1, "Grundstellung: f j", "fj", "fff jjj fjfj jfjf fj jf ff jj fff jjj fjfj");
-             add(2, "Grundstellung: d k", "fjdk", "ddd kkk dkdk kdkd dj fj dk kd fd jd kf jf");
-             add(3, "Grundstellung: s l", "fjdksl", "sss lll slsl lsls ds ks fs js as la sl");
-             add(4, "Grundstellung: a ö", "fjdkslaö", "aaa ööö aöaö öaöa sa la fa ja al ös lö");
-             add(5, "Mitte: g h", "all", "ggg hhh ghgh hghg fg jh dg kh ag öh gl hl");
-             add(6, "Wörter Grundreihe", "all", "hallo da als das glas ja saal fass hasse kahl");
-             add(7, "Sätze Grundreihe", "all", "Hallo Saskia. Das Glas ist da. Ja, das ist alles.");
-             add(8, "Mix Grundreihe", "all", "asdf jklö ghjk aass ddff jjkk llöö fghj");
-             add(9, "Speed Grundreihe", "all", "fad gas jagd hals kaff saal lass fall das");
-             add(10, "Test Grundreihe", "all", "Saskia ass das Glas. Hallo Papa. Ja, das ist das Haus.");
-             add(11, "Oberreihe: e i", "all ei", "eee iii ei ie see fee eil idee seele eil");
-             add(12, "Wörter mit e i", "all ei", "die idee see eis teil lied hier diese");
-             add(13, "Oberreihe: r t", "all eirt", "rrr ttt tr rt er te treter rat tat tier");
-             add(14, "Wörter mit r t", "all eirt", "treten rate tasten rest dort tier drei");
-             add(15, "Oberreihe: u", "all eirtu", "uuu tut rut urt hut hutte tau durst");
-             add(16, "Wörter mit u", "all eirtu", "hut tutu tau rustet durst turm stunde");
-             add(17, "Oberreihe: z w o", "all eirtuzwo", "zzz www ooo zu wo ort wort toll zwei");
-             add(18, "Wörter mit z w o", "all eirtuzwo", "zwei wort wo ort zoo wert witz oz");
-             add(19, "Oberreihe: q p ü", "all eirtuzwoqpü", "qqq ppp üüü quer post qual pott tür");
-             add(20, "Wörter mit q p ü", "all eirtuzwoqpü", "quer pferd post üben tür früh grün");
-             add(21, "Mix Oberreihe", "all", "trete quip zeit wort tür post quer");
-             add(22, "Test Oberreihe", "all", "Die Tür ist zu. Zwei Pferde laufen quer über die Straße.");
-             add(23, "Unterreihe: c v", "all", "ccc vvv cv vc victor cave viel vater");
-             add(24, "Wörter mit c v", "all", "victor cave virus vor viel vater");
-             add(25, "Unterreihe: b n", "all", "bbb nnn bn nb band nein bin nass");
-             add(26, "Wörter mit b n", "all", "band nein bin nass name bank");
-             add(27, "Unterreihe: m y", "all", "mmm yyy mutter yoga yacht typ");
-             add(28, "Wörter mit m y", "all", "mutter mama mehr yoga typ yacht");
-             add(29, "Unterreihe: x ß", "all", "xxx ßßß box taxi straße groß");
-             add(30, "Wörter mit x ß", "all", "box fax taxi mix straße fuß groß");
-             add(31, "Mix Unterreihe", "all", "victor yoga straße name box mutter");
-             add(32, "Test Unterreihe", "all", "Victor besucht die Großmutter in der Yachtstraße.");
-             add(33, "Großschreibung Intro", "all", "Hallo. Das Haus. Mama und Papa. Ja!");
-             add(34, "Satzanfänge", "all", "Die Familie ist glücklich. Hedy lacht. Keno spielt.");
-             add(35, "Frage und Ausrufe", "all", "Wer ist da? Super! Toll gemacht! Wie schön!");
-             add(36, "Anführungszeichen", "all", "Mama sagt: „Komm essen!“ Papa ruft: „Ja, lecker!“");
-             add(37, "Gemischte Sätze", "all", "Hedy fragt: „Darf ich?“ Keno antwortet: „Ja!“");
-             add(38, "Längere Sätze", "all", "Die Familie geht spazieren. „Wie schön!“, sagt Mama.");
-             add(39, "Mix Groß/Klein", "all", "Papa liest vor. „Das ist spannend“, flüstert Hedy.");
-             add(40, "Test Großschreibung", "all", "„Hallo!“, ruft Keno. „Kommt spielen!“, sagt Hedy fröhlich.");
-             add(41, "Zahlen 0-9", "all 0123456789", "111 222 333 444 555 666 777 888 999 000 123 456");
-             add(42, "Einfache Rechnungen", "all", "1+1=2 3+4=7 5-2=3 10*2=20 15/3=5");
-             add(43, "Telefonnummern", "all", "0176-1234567 030-888888 0151-23456789");
-             add(44, "Zeichen: + - * / =", "all", "2+3=5 10-4=6 3*7=21 12/4=3");
-             add(45, "Zeichen: ( )", "all", "(Hallo) (1+2)*3 (Hedy und Keno)");
-             add(46, "Zeichen: @ €", "all", "info@beispiel.de 9,99€ 100€ 0,50€");
-             add(47, "Jahre und Daten", "all", "13.12.2025 01.01.2026 Hedy ist 8 Jahre alt.");
-             add(48, "Gemischte Zahlen", "all", "Keno hat 12 Punkte. Hedy 15. Super!");
-             add(49, "Mix Zahlen/Zeichen", "all", "(+49) 030/123456 info@familie.de");
-             add(50, "Test Zahlen/Zeichen", "all", "Am 13.12.2025 kostet das Spiel 19,99€. Tel: 0176-12345678.");
-             add(51, "Frühstück", "all", "Mama macht Frühstück. Papa trinkt Kaffee. Hedy isst Brot. Keno mag Müsli. Alle sind fröhlich.");
-             add(52, "Im Garten", "all", "Hedy und Keno spielen im Garten. Papa wirft den Ball. Mama lacht. Der Hund bellt mit.");
-             add(53, "Am Meer", "all", "Die Familie fährt ans Meer. Hedy baut eine Sandburg. Keno schwimmt. Papa und Mama sonnen sich.");
-             add(54, "Abendessen", "all", "Mama kocht Pasta. Papa erzählt einen Witz. Hedy und Keno lachen. Es schmeckt lecker.");
-             add(55, "Helfen", "all", "Hedy deckt den Tisch. Keno hilft beim Kochen. Papa räumt auf. Sie sind ein super Team!");
-             add(56, "Zoo-Besuch", "all", "Im Zoo sehen sie Elefanten und Affen. Keno lacht über die Affen. Hedy füttert Ziegen.");
-             add(57, "Spiel gewonnen", "all", "Keno gewinnt beim Brettspiel. Er jubelt: „Hurra!“ Hedy klatscht. Papa sagt: „Super!“");
-             add(58, "Bild malen", "all", "Hedy malt ein Bild der Familie. Mama hängt es auf. Papa sagt: „Das ist wunderschön!“");
-             add(59, "Abendgeschichte", "all", "Papa liest vor. Hedy und Keno kuscheln sich ein. Mama bringt Kakao. Es ist gemütlich.");
-             add(60, "Gute Nacht", "all", "Alle gehen ins Bett. „Gute Nacht!“, sagt Mama. „Schlaft schön!“, sagt Papa.");
-             add(61, "Waldabenteuer", "all", "Hedy und Keno erkunden den Wald. Sie finden einen kleinen Schatz. Mama und Papa sind stolz auf die mutigen Kinder.");
-             add(62, "Rad fahren lernen", "all", "Keno lernt Rad fahren. Papa hält hinten fest. Plötzlich fährt er allein! Alle jubeln: „Bravo, Keno!“");
-             add(63, "Kuchen backen", "all", "Hedy backt mit Mama einen Kuchen. Er duftet wunderbar. Papa und Keno essen zwei Stücke. „Lecker!“, sagen sie.");
-             add(64, "Picknick", "all", "Im Park machen sie Picknick. Die Sonne scheint hell. Sie essen Sandwiches und spielen Frisbee.");
-             add(65, "Lustiger Drache", "all", "Hedy und Keno träumen von einem freundlichen Drachen. Er fliegt mit ihnen über das Haus. Mama und Papa winken von unten.");
-             add(66, "Zauberblumen", "all", "Im Garten wachsen plötzlich riesige Blumen. Keno gießt sie. Hedy pflückt eine für Mama. Papa staunt: „Das ist Magie!“");
-             add(67, "Superhelden", "all", "Papa ist der starke Held. Mama kann zaubern. Hedy fliegt hoch. Keno ist superschnell. Zusammen retten sie den Tag!");
-             add(68, "Bauernhof", "all", "Sie besuchen einen Bauernhof. Hedy melkt eine Kuh. Keno füttert Küken. Mama streichelt Pferde. Papa hilft beim Heu.");
-             add(69, "Rieseneis", "all", "Sie essen den größten Eisbecher der Welt. Mit Schoko, Vanille und Erdbeere. Alle schlecken glücklich.");
-             add(70, "Weihnachten", "all", "Zu Weihnachten backen sie Plätzchen. Hedy dekoriert. Keno isst Teig. Mama singt. Papa schmückt den Baum.");
-             add(71, "Sommergrillen", "all", "Im Sommer grillen sie im Garten. Papa macht Würstchen. Mama Salat. Hedy und Keno spielen bis spät Verstecken.");
-             add(72, "Roboter bauen", "all", "Keno baut einen Roboter aus Karton. Er tanzt lustig. Hedy lacht. Mama und Papa klatschen: „Genial!“");
-             add(73, "Familienreise", "all", "Die Familie packt den Koffer und fährt ans Meer. Sie bauen Sandburgen, schwimmen und essen Eis. Es ist das beste Abenteuer!");
-             add(74, "Zaubertag", "all", "Heute ist Zaubertag! Alles wird bunt. Hedy zaubert Blumen, Keno Eis, Mama Kuchen und Papa Spielzeug. Alle tanzen vor Freude.");
-             add(75, "Schatzsuche", "all", "Mit einer Schatzkarte suchen sie im Wald. Am Ende finden sie Schokoladengold! „Hurra!“, rufen Hedy und Keno.");
-             add(76, "Große Party", "all", "Zur Geburtstagsfeier kommen alle Freunde. Es gibt Kuchen, Spiele, Musik und Luftballons. Papa tanzt lustig, Mama singt mit, Hedy und Keno sind die Stars des Abends.");
-             add(77, "Traumwelt", "all", "In der Traumwelt fliegen sie auf Wolken, besuchen Sterne und essen Mondkuchen. Die Familie lacht den ganzen Tag und nachts. Es ist die schönste Welt ever!");
-             add(78, "Detektive", "all", "Hedy und Keno spielen Detektive. Sie suchen den verlorenen Teddy. Mit Mama und Papa finden sie ihn im Garten. „Fall gelöst!“, rufen sie stolz.");
-             add(79, "Weltreise", "all", "Stellt euch vor, die Familie reist um die Welt: Paris, New York, Tokio! Sie sehen den Eiffelturm, essen Pizza in Italien und Sushi in Japan. Unvergesslich!");
-             add(80, "Zirkus", "all", "Sie gehen in den Zirkus. Clowns machen Witze, Löwen springen durch Reifen, Akrobaten fliegen hoch. Keno lacht am lautesten, Hedy staunt mit offenem Mund.");
-             add(81, "Erfindung", "all", "Keno erfindet eine Maschine, die Hausaufgaben macht. Hedy testet sie. Mama und Papa sind begeistert – bis sie nur Witze schreibt! Alle lachen herzlich.");
-             add(82, "Winterzauber", "all", "Im Winter bauen sie einen Schneemann. Sie rodeln den Hügel hinunter. Mama macht heißen Kakao. Abends sitzen alle am Kamin und erzählen Geschichten.");
-             add(83, "Unterwasserwelt", "all", "Im Traum tauchen sie ins Meer. Sie schwimmen mit Delfinen, sehen bunte Fische und eine Schatztruhe. Papa öffnet sie – voller Schokolade!");
-             add(84, "Ritter und Prinzessin", "all", "Hedy ist die mutige Prinzessin, Keno der tapfere Ritter. Sie bekämpfen einen freundlichen Drachen, der nur Kuscheln will. Happy End!");
-             add(85, "Raumfahrt", "all", "Die Familie baut eine Rakete und fliegt zum Mond. Sie springen in niedriger Schwerkraft, pflanzen eine Flagge und essen Mondkäse. Wow!");
-             add(86, "Magischer Wald", "all", "Im magischen Wald sprechen die Tiere. Ein Fuchs zeigt ihnen den Weg zu einer Lichtung mit tanzenden Feen. Mama tanzt mit, Papa filmt alles.");
-             add(87, "Zeitreise", "all", "Mit einer Zeitmaschine reisen sie zu Dinosauriern. Sie sehen T-Rex und fliegen auf einem Pterodactyl. Zurück in der Gegenwart erzählen sie alles.");
-             add(88, "Olympiade", "all", "Die Familie macht eine eigene Olympiade: Laufen, Springen, Ballwerfen. Jeder gewinnt eine Medaille. „Wir sind alle Sieger!“, sagt Papa.");
-             add(89, "Geheimversteck", "all", "Hedy und Keno bauen ein geheimes Baumhaus. Nur die Familie darf rein. Dort lesen sie Comics, essen Kekse und planen neue Abenteuer.");
-             add(90, "Das größte Fest", "all", "Am Jahresende feiern sie das größte Fest. Mit Feuerwerk, Geschenken, Liedern und Umarmungen. Die beste Familie der Welt!");
-             add(91, "Das große Abenteuerbuch", "all", "Es war einmal eine Familie: Mama, Papa, Hedy und Keno. Sie lebten in einem schönen Haus mit großem Garten. Eines Tages fanden die Kinder eine alte Schatzkarte hinter dem Schrank. „Lasst uns den Schatz suchen!“, rief Keno aufgeregt. Mama und Papa lachten: „Na klar, Abenteuerzeit!“ Sie packten Rucksäcke mit Proviant und machten sich auf den Weg in den nahegelegenen Wald.");
-             add(92, "Fortsetzung Schatzsuche", "all", "Im Wald folgten sie der Karte. Zuerst kamen sie an einen Bach. „Wir brauchen eine Brücke!“, sagte Hedy clever. Keno fand Äste, und zusammen bauten sie eine. Papa half tragen, Mama motivierte alle. Plötzlich hörten sie ein Rascheln – ein kleiner Fuchs erschien und zeigte ihnen den Weg weiter.");
-             add(93, "Der magische Baum", "all", "Am Ende der Karte stand ein riesiger alter Baum. Unter seinen Wurzeln glitzerte eine Truhe. Sie öffneten sie vorsichtig – voller Goldmünzen aus Schokolade! „Der beste Schatz!“, jubelte Hedy. Sie setzten sich hin, aßen Schokolade und erzählten Geschichten bis die Sonne unterging.");
-             add(94, "Heimkehr", "all", "Zu Hause angekommen, erzählten sie den ganzen Tag von ihrem Abenteuer. Mama machte ein Foto von allen mit der Truhe. Papa sagte stolz: „Ihr seid die mutigsten Entdecker!“ Abends kuschelten sie zusammen und träumten von neuen Abenteuern.");
-             add(95, "Motivation", "all", "Du hast schon so weit geschafft! Alle Buchstaben, Zahlen und Zeichen sitzen perfekt. Deine Finger fliegen über die Tastatur. Mama, Papa, Hedy und Keno klatschen Beifall für dich!");
-             add(96, "Fast am Ziel", "all", "Nur noch ein paar Level. Du tippst jetzt blitzschnell und fehlerfrei. Das 10-Finger-System ist dein! Weiter so – du bist ein echter Champion!");
-             add(97, "Letzte große Geschichte 1", "all", "Stell dir vor, du bist mit Hedy und Keno unterwegs. Ihr baut das größte Baumhaus der Welt, fliegt mit selbstgebauten Flügeln und findet einen verborgenen Wasserfall mit Regenbogenfischen. Mama und Papa kommen nach und machen ein riesiges Picknick. Alle lachen, singen und tanzen bis Mitternacht.");
-             add(98, "Letzte große Geschichte 2", "all", "Eines Tages öffnet sich ein Portal im Garten. Die Familie tritt hindurch und landet in einer Welt aus Süßigkeiten. Schokoladenberge, Gummibärseen und Lakritzbrücken! Sie erkunden alles, treffen freundliche Bonbon-Drachen und kehren mit vollen Taschen nach Hause zurück. Das war das süßeste Abenteuer ever!");
-             add(99, "Vor dem Finale", "all", "Du bist bereit für das große Finale. Deine Geschwindigkeit ist top, deine Genauigkeit perfekt. Hedy sagt: „Wow!“, Keno: „Super!“, Mama und Papa: „Wir sind so stolz auf dich!“");
-             add(100, "Glückwunsch – 10-Finger-Meister!", "all", "Herzlichen Glückwunsch! Du hast alle 100 Level gemeistert. Du beherrschst das 10-Finger-System jetzt perfekt – schnell, sicher und ohne hinzuschauen. Hedy, Keno, Mama und Papa jubeln: „Du bist der allerbeste Tipp-Star der Welt!“ Feiere deinen Erfolg – du hast es verdient!");
-
-             return levels;
-        };
-        const LEVELS = generateLevels();
-        const LEVEL_BLOCKS = [{id:0,title:"Die Grundreihe",desc:"Lerne die Tasten"},{id:1,title:"Oberreihe",desc:"Nach oben"},{id:2,title:"Unterreihe",desc:"Nach unten"},{id:3,title:"Groß/Klein",desc:"Shift Taste"},{id:4,title:"Zahlen",desc:"123"},{id:5,title:"Sätze",desc:"Richtig schreiben"},{id:6,title:"Geschichten",desc:"Spannend"},{id:7,title:"Familie",desc:"Abenteuer"},{id:8,title:"Phantasie",desc:"Träumen"},{id:9,title:"Finale",desc:"Meister"}];
-
-        class AudioManager {
+        // --- AUDIO SYSTEM ---
+        class AudioSynth {
             constructor() {
-                this.ready = false; this.sfxType = 'click'; this.bgmType = 'keychill'; 
-                this.reverb = new Tone.Reverb({ decay: 2, wet: 0.3 }).toDestination();
-                this.bgmGain = new Tone.Volume(0).connect(this.reverb); this.sfxGain = new Tone.Volume(0).connect(this.reverb);
-                this.poly = new Tone.PolySynth().connect(this.sfxGain); this.membrane = new Tone.MembraneSynth().connect(this.sfxGain);
-                this.bgmPlayer = null;
-            }
-            async init() { if (this.ready) return; await Tone.start(); this.ready = true; this.updateBGM(); }
-            setVolume(type, val) { const db = val<=0?-Infinity:Tone.gainToDb(val/100); if(type==='music') this.bgmGain.volume.rampTo(db,0.1); else this.sfxGain.volume.rampTo(db,0.1); }
-            setSettings(sfx, bgm) { this.sfxType = sfx; this.bgmType = bgm; this.updateBGM(); }
-            playCorrect() { if(!this.ready||this.sfxType==='off') return; this.poly.triggerAttackRelease("C5", "8n"); }
-            playWrong() { if(!this.ready||this.sfxType==='off') return; this.membrane.triggerAttackRelease("G2", "16n"); }
-            playWin() { if(!this.ready||this.sfxType==='off') return; this.poly.triggerAttackRelease(["C4","E4","G4","C5"], "8n"); }
-            playSuperWin() { if(!this.ready||this.sfxType==='off') return; this.poly.triggerAttackRelease(["C3","E3","G3","C4","E4","G4","C5"], "16n"); }
-            updateBGM() {
-                if(!this.ready) return;
-                if(this.bgmPlayer) { this.bgmPlayer.stop(); this.bgmPlayer.dispose(); this.bgmPlayer=null; }
-                if(this.bgmType === 'off') return;
-                if(this.bgmType === 'keychill') {
-                    this.bgmPlayer = new Tone.Player({url:"keychill.mp3", loop:true, autostart:true, volume:-10}).connect(this.bgmGain);
-                } else {
-                    // Fallback Synth Loop
-                    const loop = new Tone.Loop(time => { this.poly.triggerAttackRelease("C4", "8n", time); }, "2n").start(0);
-                    Tone.Transport.start();
+                try {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    this.masterGain = this.ctx.createGain();
+                    this.sfxGain = this.ctx.createGain();
+                    this.masterGain.connect(this.ctx.destination);
+                    this.sfxGain.connect(this.masterGain);
+                    this.masterGain.gain.value = 1.0;
+                    this.sfxGain.gain.value = 0.4;
+                    this.enabled = true;
+                    this.bgmEl = document.getElementById('bgm');
+                } catch(e) {
+                    console.warn("Audio error:", e);
+                    this.enabled = false;
                 }
             }
+
+            resume() { if(this.enabled && this.ctx.state === 'suspended') this.ctx.resume(); }
+
+            playTone(freq, type, duration, vol = 1) {
+                if(!this.enabled) return;
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+                    osc.connect(gain);
+                    gain.connect(this.sfxGain);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch(e) {}
+            }
+
+            playShoot(level) {
+                if(level === 1) this.playTone(600, 'square', 0.15, 0.3);
+                else if (level === 2) { this.playTone(800, 'square', 0.2, 0.3); setTimeout(()=>this.playTone(800, 'square', 0.2, 0.3), 80); }
+                else { this.playTone(200, 'sawtooth', 0.3, 0.5); this.playTone(1500, 'sine', 0.3, 0.3); }
+            }
+
+            playMassiveExplosion() {
+                // Creates a rock sound
+                this.playTone(60, 'sawtooth', 0.5, 0.8);
+                this.playTone(40, 'square', 0.4, 0.8);
+                setTimeout(() => this.playTone(120, 'square', 0.2, 0.4), 50);
+            }
+
+            playLifeLost() {
+                this.playTone(300, 'sawtooth', 0.3, 0.5);
+                setTimeout(() => this.playTone(150, 'sawtooth', 0.4, 0.5), 150);
+            }
+
+            playPowerUp() {
+                this.playTone(440, 'sine', 0.6, 0.5);
+                setTimeout(()=>this.playTone(880, 'sine', 0.6, 0.5), 200);
+            }
+
+            startMusic() { if(this.bgmEl) { this.bgmEl.volume = 0.5; this.bgmEl.play().catch(e=>{}); } }
+            stopMusic() { if(this.bgmEl) { this.bgmEl.pause(); this.bgmEl.currentTime = 0; } }
         }
 
-        class World3D {
-            constructor(containerId) {
-                this.container = document.getElementById(containerId);
-                this.scene = new THREE.Scene(); this.scene.fog = new THREE.FogExp2(0xE2F0CB, 0.02);
-                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-                this.camera.position.set(0, 2, 8); this.camera.lookAt(0, 1, 0);
-                this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-                this.renderer.setSize(window.innerWidth, window.innerHeight);
-                this.container.appendChild(this.renderer.domElement);
-                this.scene.add(new THREE.HemisphereLight(0xffffff, 0xffffff, 0.6));
-                this.mascot = new THREE.Group(); this.scene.add(this.mascot);
-                this.createCharacter('fox', this.mascot);
-                this.createEnvironment();
-                this.animate();
-            }
-            createCharacter(type, group) {
-                const mat = new THREE.MeshStandardMaterial({color:0xFF9AA2});
-                group.add(new THREE.Mesh(new THREE.BoxGeometry(1.2,1.2,1.2), mat));
-            }
-            createEnvironment() {
-                const mat = new THREE.MeshStandardMaterial({color:0xB5EAD7});
-                this.scene.add(new THREE.Mesh(new THREE.CylinderGeometry(6,6,2,8), mat)).position.y=-2;
-            }
-            setMascot(type) { /* Simplified for brevity, assume works */ }
-            setTheme(type) { /* Simplified */ }
-            triggerReaction() { this.mascot.position.y = 1; setTimeout(()=>this.mascot.position.y=0, 200); }
-            stepChase(who) { /* Chase Logic */ }
-            animate() { requestAnimationFrame(()=>this.animate()); this.renderer.render(this.scene, this.camera); }
-        }
-
+        // --- GAME ENGINE ---
         class Game {
             constructor() {
-                this.currentUser = localStorage.getItem('tastenZauberUser') || 'Hedy';
-                this.audio = new AudioManager();
-                this.world = new World3D('canvas-container');
-                this.currentLevelIdx = 0; this.targetString = ""; this.currentIndex = 0;
-                this.score = 0; this.errors = 0; this.streak = 0;
-                this.isGameActive = false; this.isPaused = false;
-                this.ui = {
-                    screens: { start: document.getElementById('start-screen'), game: document.getElementById('ui-layer'), level: document.getElementById('level-screen'), modal: document.getElementById('modal-screen'), pause: document.getElementById('pause-screen'), options: document.getElementById('options-screen') },
-                    display: { current: document.getElementById('current-char'), next: document.getElementById('next-chars'), score: document.getElementById('score-val'), bar: document.getElementById('prog-bar') },
-                    buttons: { directNext: document.getElementById('btn-direct-next') },
-                    users: { hedy: document.getElementById('user-hedy'), keno: document.getElementById('user-keno') },
-                    bgContainer: document.getElementById('global-bg')
-                };
+                this.audio = new AudioSynth();
+                this.scene = new THREE.Scene();
+                this.scene.fog = new THREE.FogExp2(0x050510, 0.015);
                 
-                // CHECK IF RETURNING FROM BONUS
-                if (localStorage.getItem('tastenZauber_returning') === 'true') {
-                    localStorage.removeItem('tastenZauber_returning');
-                    this.ui.screens.start.classList.add('hidden'); // Skip start screen
-                    this.showScreen('level');
+                this.camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.camera.position.set(0, 3, 25);
+                
+                this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(window.devicePixelRatio);
+                this.renderer.shadowMap.enabled = true;
+                document.getElementById('canvas-container').appendChild(this.renderer.domElement);
+
+                // Lighting
+                const ambLight = new THREE.AmbientLight(0xffffff, 0.6);
+                this.scene.add(ambLight);
+                const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+                dirLight.position.set(10, 20, 10);
+                this.scene.add(dirLight);
+                
+                // Game Vars
+                this.state = 'MENU';
+                this.score = 0;
+                this.lives = 3;
+                this.combo = 0;
+                this.weaponLevel = 1;
+                this.enemies = [];
+                this.particles = [];
+                this.shockwaves = []; 
+                this.clock = new THREE.Clock();
+                this.shakeIntensity = 0; 
+                
+                this.spawnRate = 2000;
+                this.lastSpawn = 0;
+                this.gameSpeed = 15;
+                
+                // Get Keys from Main Game
+                const storedKeys = localStorage.getItem('tastenZauber_bonusKeys');
+                if (storedKeys) {
+                    const raw = storedKeys.toUpperCase().replace(/SHIFT/g, '').replace(/[^A-Z0-9ÄÖÜ]/g, '');
+                    this.allowedKeys = raw.length > 0 ? raw : "ASDFJKL";
+                } else {
+                    this.allowedKeys = "ASDFJKL";
                 }
 
-                this.loadUserScores(); this.setupListeners(); this.renderLevelSelect();
-            }
-            loadUserScores() { this.scores = JSON.parse(localStorage.getItem(`tastenZauberScores_${this.currentUser}`)) || {}; }
-            
-            async startGame() {
-                try { await Tone.start(); } catch(e) { console.log("Audio start failed", e); }
-                this.audio.init();
-                this.showScreen('level');
+                this.initWorld();
+                this.initPlayer();
+                this.setupEvents();
+                this.loop();
             }
 
-            // --- REDIRECT TO BONUS (MODIFIED) ---
-            handleNextAction() {
-                this.ui.screens.modal.classList.add('hidden');
+            initWorld() {
+                const gridHelper = new THREE.GridHelper(400, 100, 0xff00ff, 0x110033);
+                gridHelper.position.y = -8;
+                this.scene.add(gridHelper);
+                this.grid = gridHelper;
+
+                const starsGeo = new THREE.BufferGeometry();
+                const count = 5000;
+                const pos = new Float32Array(count * 3);
+                for(let i=0; i<count*3; i++) pos[i] = (Math.random() - 0.5) * 400;
+                starsGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+                const starsMat = new THREE.PointsMaterial({color: 0xffffff, size: 0.3});
+                this.stars = new THREE.Points(starsGeo, starsMat);
+                this.scene.add(this.stars);
+            }
+
+            initPlayer() {
+                this.playerGroup = new THREE.Group(); // FIXED VARIABLE NAME
                 
-                const isLooping = document.getElementById('btn-loop').classList.contains('toggle-on');
-                if (isLooping) {
-                    this.startLevel(this.currentLevelIdx);
+                const hullGeo = new THREE.ConeGeometry(1.5, 6, 8);
+                const hullMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.3 });
+                const hull = new THREE.Mesh(hullGeo, hullMat);
+                hull.rotation.x = Math.PI/2;
+                hull.rotation.z = Math.PI;
+                this.playerGroup.add(hull);
+
+                const cock = new THREE.Mesh(new THREE.SphereGeometry(0.8), new THREE.MeshBasicMaterial({ color: 0x00f3ff }));
+                cock.position.set(0, 0.5, 1);
+                this.playerGroup.add(cock);
+
+                // Upgrades
+                this.lvl2Group = new THREE.Group();
+                const wing = new THREE.Mesh(new THREE.BoxGeometry(6, 0.2, 2), new THREE.MeshStandardMaterial({ color: 0x222222 }));
+                wing.position.z = 1; this.lvl2Group.add(wing);
+                this.lvl2Group.visible = false; this.playerGroup.add(this.lvl2Group);
+
+                this.lvl3Group = new THREE.Group();
+                const canL = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 4), new THREE.MeshStandardMaterial({ color: 0x444444 }));
+                canL.position.set(-3.5, 0, 0);
+                const canR = canL.clone(); canR.position.set(3.5, 0, 0);
+                this.lvl3Group.add(canL, canR);
+                this.lvl3Group.visible = false; this.playerGroup.add(this.lvl3Group);
+
+                this.playerGroup.position.set(0, -3, 18);
+                this.scene.add(this.playerGroup);
+            }
+
+            getFingerColor(char) {
+                const c = char.toUpperCase();
+                if ('QAZ'.includes(c)) return '#ff3333';
+                if ('WSX'.includes(c)) return '#ff9933';
+                if ('EDC'.includes(c)) return '#ffff33';
+                if ('RFVTGB'.includes(c)) return '#33ff33';
+                if ('YHNUJM'.includes(c)) return '#3399ff';
+                if ('IK'.includes(c)) return '#aa33ff';
+                if ('OL'.includes(c)) return '#ff33cc';
+                if ('P'.includes(c)) return '#ff33ff';
+                return '#ffffff';
+            }
+
+            createEnemy() {
+                let char = this.allowedKeys[Math.floor(Math.random() * this.allowedKeys.length)];
+                let type = 'single';
+                if (this.score > 1000 && Math.random() > 0.7) type = 'double';
+                if (this.score > 3000 && Math.random() > 0.8) type = 'triple';
+
+                let displayStr = char; let hp = 1; let sizeScale = 1;
+                if (type === 'double') { displayStr = char+char; hp = 2; sizeScale = 1.5; }
+                if (type === 'triple') { displayStr = char+char+char; hp = 3; sizeScale = 2.0; }
+
+                const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 256;
+                const ctx = canvas.getContext('2d');
+                const baseColor = this.getFingerColor(char);
+                const gradient = ctx.createLinearGradient(0,0,256,256);
+                gradient.addColorStop(0, baseColor); gradient.addColorStop(1, '#000000');
+                ctx.fillStyle = gradient; ctx.fillRect(0,0,256,256);
+                ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 15; ctx.strokeRect(0,0,256,256);
+                ctx.fillStyle = '#ffffff'; ctx.font = "bold 100px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(displayStr, 128, 128);
+
+                const mat = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true, opacity: 0.9 });
+                const geo = new THREE.BoxGeometry(2.5 * sizeScale, 2.5 * sizeScale, 2.5 * sizeScale);
+                const mesh = new THREE.Mesh(geo, mat);
+                
+                // Spawn position
+                mesh.position.set((Math.random()-0.5)*30, (Math.random()-0.5)*12, -80);
+                this.scene.add(mesh);
+                return { mesh, char: char.toLowerCase(), hp, maxHp: hp, type, color: new THREE.Color(baseColor) };
+            }
+
+            createLaser(targetVec, colorHex) {
+                const points = [ new THREE.Vector3(this.playerGroup.position.x, this.playerGroup.position.y, this.playerGroup.position.z-1), targetVec ];
+                const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                const material = new THREE.LineBasicMaterial({ color: colorHex, linewidth: 5 });
+                const line = new THREE.Line(geometry, material);
+                this.scene.add(line);
+                setTimeout(() => this.scene.remove(line), 60);
+            }
+
+            createMassiveExplosion(pos, color) {
+                this.audio.playMassiveExplosion();
+                this.shakeIntensity = 1.0; // Camera shake!
+
+                // 1. Particles
+                const particleCount = 60;
+                const geometry = new THREE.BufferGeometry();
+                const positions = [];
+                const velocities = [];
+                for (let i = 0; i < particleCount; i++) {
+                    positions.push(pos.x, pos.y, pos.z);
+                    const speed = Math.random() * 3 + 1;
+                    velocities.push( (Math.random()-0.5)*speed, (Math.random()-0.5)*speed, (Math.random()-0.5)*speed );
+                }
+                geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                const mat = new THREE.PointsMaterial({ color: color, size: 0.9, transparent: true, blending: THREE.AdditiveBlending });
+                const points = new THREE.Points(geometry, mat);
+                this.scene.add(points);
+                this.particles.push({ mesh: points, vels: velocities, life: 1.0 });
+
+                // 2. Shockwave Ring
+                const ringGeo = new THREE.RingGeometry(0.1, 0.5, 32);
+                const ringMat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.8, side: THREE.DoubleSide });
+                const ring = new THREE.Mesh(ringGeo, ringMat);
+                ring.position.copy(pos);
+                ring.lookAt(this.camera.position);
+                this.scene.add(ring);
+                this.shockwaves.push({ mesh: ring, scale: 1.0, opacity: 0.8 });
+
+                // 3. Flash
+                const light = new THREE.PointLight(color, 3, 40);
+                light.position.copy(pos);
+                this.scene.add(light);
+                setTimeout(() => this.scene.remove(light), 100);
+            }
+
+            loop() {
+                requestAnimationFrame(() => this.loop());
+                
+                // Camera Shake
+                if (this.shakeIntensity > 0) {
+                    const rx = (Math.random() - 0.5) * this.shakeIntensity;
+                    const ry = (Math.random() - 0.5) * this.shakeIntensity;
+                    this.camera.position.set(rx, 3 + ry, 25);
+                    this.shakeIntensity -= 0.05;
+                    if(this.shakeIntensity < 0) {
+                        this.shakeIntensity = 0;
+                        this.camera.position.set(0, 3, 25);
+                    }
+                }
+
+                this.renderer.render(this.scene, this.camera);
+
+                // Menu animation
+                if(this.state !== 'PLAYING') {
+                    this.stars.rotation.z += 0.01;
                     return;
                 }
 
-                const isBonusOn = document.getElementById('btn-bonus').classList.contains('toggle-on');
-                if (isBonusOn) {
-                    const lvlKeys = LEVELS[this.currentLevelIdx].keys;
-                    localStorage.setItem('tastenZauber_bonusKeys', lvlKeys);
-                    window.location.href = 'bonus.html';
-                } else {
-                    if(!this.ui.buttons.directNext.classList.contains('hidden')) {
-                        this.startLevel(this.currentLevelIdx + 1);
-                    } else {
-                        this.showScreen('level');
+                const delta = this.clock.getDelta();
+                const time = this.clock.getElapsedTime();
+
+                // Move environment
+                this.stars.rotation.z += 0.05 * delta;
+                this.grid.position.z = (time * 20) % 20;
+
+                // Animate Player (Idle)
+                this.playerGroup.rotation.z = Math.PI + Math.sin(time * 2) * 0.05;
+                this.playerGroup.rotation.x = Math.sin(time * 1.5) * 0.05;
+
+                // Spawn Enemies
+                if (time * 1000 - this.lastSpawn > this.spawnRate) {
+                    this.enemies.push(this.createEnemy());
+                    this.lastSpawn = time * 1000;
+                    if (this.spawnRate > 600) this.spawnRate -= 10;
+                    this.gameSpeed += 0.02;
+                }
+
+                // Update Enemies
+                for (let i = this.enemies.length - 1; i >= 0; i--) {
+                    const e = this.enemies[i];
+                    e.mesh.position.z += this.gameSpeed * delta;
+                    e.mesh.rotation.x += delta;
+                    e.mesh.rotation.y += delta;
+
+                    if (e.mesh.position.z > 20) {
+                        this.scene.remove(e.mesh);
+                        this.enemies.splice(i, 1);
+                        this.takeDamage();
+                    }
+                }
+
+                // Update Particles
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    const p = this.particles[i];
+                    p.life -= delta * 1.5;
+                    const pos = p.mesh.geometry.attributes.position.array;
+                    for (let j = 0; j < p.vels.length/3; j++) {
+                        pos[j*3] += p.vels[j*3];
+                        pos[j*3+1] += p.vels[j*3+1];
+                        pos[j*3+2] += p.vels[j*3+2];
+                    }
+                    p.mesh.geometry.attributes.position.needsUpdate = true;
+                    p.mesh.material.opacity = p.life;
+                    if (p.life <= 0) {
+                        this.scene.remove(p.mesh);
+                        this.particles.splice(i, 1);
+                    }
+                }
+
+                // Update Shockwaves
+                for (let i = this.shockwaves.length - 1; i >= 0; i--) {
+                    const s = this.shockwaves[i];
+                    s.scale += delta * 15;
+                    s.opacity -= delta * 2;
+                    s.mesh.scale.set(s.scale, s.scale, s.scale);
+                    s.mesh.material.opacity = s.opacity;
+                    if(s.opacity <= 0) {
+                        this.scene.remove(s.mesh);
+                        this.shockwaves.splice(i, 1);
                     }
                 }
             }
 
-            setupListeners() {
-                document.getElementById('btn-start-game').onclick = () => this.startGame();
-                document.getElementById('btn-menu').onclick = () => this.showScreen('level');
-                document.getElementById('btn-modal-action').onclick = () => this.handleNextAction();
-                // ... other listeners ...
+            takeDamage() {
+                this.lives--;
+                let s = ""; for(let i=0; i<this.lives; i++) s += "❤️"; document.getElementById('hud-lives').innerText = s;
+                this.audio.playLifeLost();
+                this.combo = 0; document.getElementById('combo-bar').style.width = "0%";
+                this.shakeIntensity = 2.0; // Big shake on hit
+                if (this.lives <= 0) this.gameOver();
+            }
+
+            heal() { if(this.lives < 5) { this.lives++; let s = ""; for(let i=0; i<this.lives; i++) s += "❤️"; document.getElementById('hud-lives').innerText = s; } }
+
+            handleInput(key) {
+                if(this.state !== 'PLAYING') return;
+                let targetIdx = -1;
+                let maxZ = -Infinity;
+
+                // Find closest enemy matching key
+                for(let i=0; i<this.enemies.length; i++) {
+                    if(this.enemies[i].char === key.toLowerCase()) {
+                        if(this.enemies[i].mesh.position.z > maxZ) {
+                            maxZ = this.enemies[i].mesh.position.z;
+                            targetIdx = i;
+                        }
+                    }
+                }
+
+                if (targetIdx !== -1) {
+                    const e = this.enemies[targetIdx];
+                    let laserCol = 0xffff00;
+                    if(this.weaponLevel === 2) laserCol = 0x00f3ff;
+                    if(this.weaponLevel === 3) laserCol = 0xff00ff;
+
+                    this.createLaser(e.mesh.position, laserCol);
+                    this.audio.playShoot(this.weaponLevel);
+                    e.hp--;
+                    
+                    if(e.hp <= 0) {
+                        this.createMassiveExplosion(e.mesh.position, e.color);
+                        this.scene.remove(e.mesh);
+                        this.enemies.splice(targetIdx, 1);
+                        this.combo++;
+                        this.addScore(100 * this.weaponLevel * (e.maxHp)); 
+                    } else {
+                        // Hit but not dead
+                        e.mesh.scale.multiplyScalar(0.9);
+                        e.mesh.material.color.setHex(0xffffff);
+                        setTimeout(() => e.mesh.material.color.copy(e.color), 50);
+                    }
+                    // Update Combo UI
+                    document.getElementById('combo-bar').style.width = Math.min(this.combo * 4, 100) + "%";
+                    if(this.combo > 1) { document.getElementById('combo-text').style.opacity = 1; document.getElementById('combo-text').innerText = "COMBO x" + this.combo; }
+                } else {
+                    this.combo = 0;
+                    document.getElementById('combo-bar').style.width = "0%";
+                    document.getElementById('combo-text').style.opacity = 0;
+                }
+            }
+
+            addScore(pts) {
+                this.score += pts + (this.combo * 10);
+                document.getElementById('hud-score').innerText = this.score;
+                if(this.score >= 2000 && this.weaponLevel === 1) this.upgradeWeapon(2, "PLASMA BLASTER", 0x00f3ff);
+                if(this.score >= 5000 && this.weaponLevel === 2) this.upgradeWeapon(3, "PHOTON CANNON", 0xff00ff);
+            }
+
+            upgradeWeapon(lvl, name, color) {
+                this.weaponLevel = lvl; this.audio.playPowerUp(); this.heal(); 
+                document.getElementById('hud-weapon').innerText = name;
+                document.getElementById('hud-weapon').style.borderColor = "#" + color.toString(16);
+                const notif = document.getElementById('upgrade-notif');
+                notif.innerText = name + " ACQUIRED!"; notif.style.color = "#" + color.toString(16);
+                notif.style.opacity = 1; notif.style.transform = "translateX(-50%) scale(1.2)";
+                setTimeout(() => { notif.style.opacity = 0; notif.style.transform = "translateX(-50%) scale(1)"; }, 3000);
+                if(lvl === 2) this.lvl2Group.visible = true;
+                if(lvl === 3) this.lvl3Group.visible = true;
+            }
+
+            setupEvents() {
+                window.addEventListener('resize', () => { this.camera.aspect = window.innerWidth / window.innerHeight; this.camera.updateProjectionMatrix(); this.renderer.setSize(window.innerWidth, window.innerHeight); });
                 window.addEventListener('keydown', (e) => {
-                    if(this.isGameActive && !this.isPaused) {
-                         if(e.key === this.targetString[this.currentIndex]) {
-                             this.currentIndex++; this.audio.playCorrect(); this.world.triggerReaction();
-                             if(this.currentIndex >= this.targetString.length) this.levelComplete();
-                             else this.updateDisplay();
-                         }
+                    if (e.key === "Escape") this.togglePause();
+                    else if (this.state === 'PLAYING') {
+                        const k = e.key.toUpperCase();
+                        if (this.allowedKeys.includes(k) && !e.repeat) this.handleInput(k);
                     }
                 });
-            }
 
-            showScreen(name) {
-                Object.values(this.ui.screens).forEach(el => el.classList.add('hidden'));
-                if(name === 'level') { this.renderLevelSelect(); this.ui.screens.level.classList.remove('hidden'); }
-                else if(name === 'game') this.ui.screens.game.classList.remove('hidden');
-            }
-
-            renderLevelSelect() {
-                const container = document.getElementById('level-container'); container.innerHTML = "";
-                LEVELS.forEach((lvl, idx) => {
-                    const btn = document.createElement('div'); btn.className = 'level-btn';
-                    btn.innerHTML = `<h3>${lvl.id}</h3>`;
-                    btn.onclick = () => this.startLevel(idx);
-                    container.appendChild(btn);
+                document.getElementById('btn-start').addEventListener('click', () => {
+                    this.audio.resume();
+                    this.startGame();
                 });
+                document.getElementById('btn-resume').addEventListener('click', () => this.togglePause());
+
+                // RETURN TO MAIN GAME:
+                const goBack = () => window.location.href = 'index.html';
+                
+                document.getElementById('btn-quit').addEventListener('click', goBack);
+                document.getElementById('btn-return').addEventListener('click', goBack);
+                document.getElementById('btn-return-main').addEventListener('click', goBack);
             }
 
-            startLevel(idx) {
-                this.currentLevelIdx = idx; this.targetString = LEVELS[idx].content; this.currentIndex = 0;
-                this.isGameActive = true; this.showScreen('game'); this.updateDisplay();
+            togglePause() {
+                if(this.state === 'PLAYING') {
+                    this.state = 'PAUSED';
+                    document.getElementById('pause-screen').classList.remove('hidden');
+                    this.clock.stop();
+                    this.audio.bgmEl.pause();
+                } else if (this.state === 'PAUSED') {
+                    this.state = 'PLAYING';
+                    document.getElementById('pause-screen').classList.add('hidden');
+                    this.clock.start();
+                    this.audio.bgmEl.play();
+                }
             }
-            updateDisplay() {
-                this.ui.display.current.textContent = this.targetString[this.currentIndex];
-                this.ui.display.next.textContent = this.targetString.substring(this.currentIndex+1, this.currentIndex+10);
+
+            startGame() {
+                document.getElementById('start-screen').classList.add('hidden');
+                document.getElementById('gameover-screen').classList.add('hidden');
+                this.state = 'PLAYING';
+                this.score = 0;
+                this.lives = 3;
+                this.combo = 0;
+                this.weaponLevel = 1;
+                
+                // Clear old meshes
+                this.enemies.forEach(e => this.scene.remove(e.mesh));
+                this.enemies = [];
+                this.particles.forEach(p => this.scene.remove(p.mesh));
+                this.particles = [];
+                this.shockwaves.forEach(s => this.scene.remove(s.mesh));
+                this.shockwaves = [];
+
+                this.lvl2Group.visible = false;
+                this.lvl3Group.visible = false;
+                document.getElementById('hud-weapon').innerText = "LASER MK-1";
+                document.getElementById('hud-lives').innerText = "❤️❤️❤️";
+                document.getElementById('hud-score').innerText = "0";
+                
+                this.clock.start();
+                this.audio.startMusic();
             }
-            levelComplete() {
-                this.isGameActive = false; this.audio.playWin();
-                document.getElementById('modal-screen').classList.remove('hidden');
-                // Simplified completion logic for brevity
+
+            gameOver() {
+                this.state = 'GAMEOVER';
+                document.getElementById('gameover-screen').classList.remove('hidden');
+                document.getElementById('final-score-disp').innerText = "Final Score: " + this.score;
+                this.audio.stopMusic();
+                this.audio.playLifeLost();
             }
         }
-        window.onload = () => { const app = new Game(); };
+
+        window.onload = () => new Game();
     </script>
 </body>
 </html>
