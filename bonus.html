@@ -16,6 +16,8 @@
         }
         body { margin: 0; overflow: hidden; background: var(--bg-dark); font-family: 'Orbitron', sans-serif; user-select: none; }
         
+        #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+
         /* UI OVERLAY */
         #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; display: flex; flex-direction: column; justify-content: space-between; padding: 25px; box-sizing: border-box;}
         
@@ -50,7 +52,7 @@
         /* MENUS */
         .overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(5, 5, 16, 0.9); backdrop-filter: blur(10px);
+            background: rgba(5, 5, 16, 0.85); backdrop-filter: blur(8px);
             display: flex; flex-direction: column; justify-content: center; align-items: center;
             z-index: 20; pointer-events: auto;
             transition: opacity 0.3s;
@@ -62,10 +64,11 @@
             text-shadow: 0 0 20px var(--neon-blue), 4px 4px 0px var(--neon-pink);
             letter-spacing: 8px; text-transform: uppercase; 
             animation: floatText 3s ease-in-out infinite;
+            text-align: center;
         }
         @keyframes floatText { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
 
-        h2 { color: var(--neon-green); font-family: 'Roboto Mono', monospace; font-size: 1.4rem; margin-bottom: 40px; }
+        h2 { color: var(--neon-green); font-family: 'Roboto Mono', monospace; font-size: 1.4rem; margin-bottom: 40px; text-align: center; }
         
         .btn {
             background: linear-gradient(90deg, var(--neon-pink), #9d00ff);
@@ -120,14 +123,13 @@
         <h1>Neon Type Blaster</h1>
         <h2>Save the Galaxy. One Keystroke at a time.</h2>
         <button class="btn" id="btn-start">DEPLOY SHIP</button>
-        <div style="margin-top: 20px; color: #aaa;">Headphones Recommended 🎧</div>
-        <button class="btn" id="btn-return-start" style="background: #444; font-size: 1rem; margin-top: 30px;">Return to Main Game</button>
+        <button class="btn" id="btn-return-main" style="background: #444; font-size: 1rem; margin-top: 30px;">Return to Main Game</button>
     </div>
 
     <div id="pause-screen" class="overlay hidden">
         <div class="paused-text">SYSTEM PAUSED</div>
         <button class="btn" id="btn-resume">RESUME (ESC)</button>
-        <button class="btn" id="btn-quit" style="font-size: 1rem; background: #444; padding: 10px 20px;">ABORT MISSION</button>
+        <button class="btn" id="btn-quit" style="font-size: 1rem; background: #444; padding: 10px 20px;">BACK TO BASE</button>
     </div>
 
     <div id="gameover-screen" class="overlay hidden">
@@ -147,7 +149,7 @@
                     this.masterGain.connect(this.ctx.destination);
                     this.sfxGain.connect(this.masterGain);
                     this.masterGain.gain.value = 1.0;
-                    this.sfxGain.gain.value = 0.5;
+                    this.sfxGain.gain.value = 0.4;
                     this.enabled = true;
                     this.bgmEl = document.getElementById('bgm');
                 } catch(e) {
@@ -181,11 +183,10 @@
             }
 
             playMassiveExplosion() {
-                // Low rumble
-                this.playTone(60, 'sawtooth', 0.8, 0.8);
-                this.playTone(40, 'square', 1.0, 0.8);
-                // High hiss
-                setTimeout(() => this.playTone(800, 'sawtooth', 0.1, 0.2), 50);
+                // Creates a rock sound
+                this.playTone(60, 'sawtooth', 0.5, 0.8);
+                this.playTone(40, 'square', 0.4, 0.8);
+                setTimeout(() => this.playTone(120, 'square', 0.2, 0.4), 50);
             }
 
             playLifeLost() {
@@ -233,9 +234,9 @@
                 this.weaponLevel = 1;
                 this.enemies = [];
                 this.particles = [];
-                this.shockwaves = []; // New for massive explosion
+                this.shockwaves = []; 
                 this.clock = new THREE.Clock();
-                this.shakeIntensity = 0; // For screen shake
+                this.shakeIntensity = 0; 
                 
                 this.spawnRate = 2000;
                 this.lastSpawn = 0;
@@ -273,15 +274,20 @@
             }
 
             initPlayer() {
-                this.playerGroup = new THREE.Group();
-                const hull = new THREE.Mesh(new THREE.ConeGeometry(1.5, 6, 8), new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.3 }));
-                hull.rotation.x = Math.PI/2; hull.rotation.z = Math.PI;
+                this.playerGroup = new THREE.Group(); // FIXED VARIABLE NAME
+                
+                const hullGeo = new THREE.ConeGeometry(1.5, 6, 8);
+                const hullMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.3 });
+                const hull = new THREE.Mesh(hullGeo, hullMat);
+                hull.rotation.x = Math.PI/2;
+                hull.rotation.z = Math.PI;
                 this.playerGroup.add(hull);
 
                 const cock = new THREE.Mesh(new THREE.SphereGeometry(0.8), new THREE.MeshBasicMaterial({ color: 0x00f3ff }));
                 cock.position.set(0, 0.5, 1);
                 this.playerGroup.add(cock);
 
+                // Upgrades
                 this.lvl2Group = new THREE.Group();
                 const wing = new THREE.Mesh(new THREE.BoxGeometry(6, 0.2, 2), new THREE.MeshStandardMaterial({ color: 0x222222 }));
                 wing.position.z = 1; this.lvl2Group.add(wing);
@@ -333,7 +339,9 @@
                 const mat = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true, opacity: 0.9 });
                 const geo = new THREE.BoxGeometry(2.5 * sizeScale, 2.5 * sizeScale, 2.5 * sizeScale);
                 const mesh = new THREE.Mesh(geo, mat);
-                mesh.position.set((Math.random()-0.5)*25, (Math.random()-0.5)*12, -60);
+                
+                // Spawn position
+                mesh.position.set((Math.random()-0.5)*30, (Math.random()-0.5)*12, -80);
                 this.scene.add(mesh);
                 return { mesh, char: char.toLowerCase(), hp, maxHp: hp, type, color: new THREE.Color(baseColor) };
             }
@@ -344,39 +352,40 @@
                 const material = new THREE.LineBasicMaterial({ color: colorHex, linewidth: 5 });
                 const line = new THREE.Line(geometry, material);
                 this.scene.add(line);
-                setTimeout(() => this.scene.remove(line), 80);
+                setTimeout(() => this.scene.remove(line), 60);
             }
 
             createMassiveExplosion(pos, color) {
                 this.audio.playMassiveExplosion();
-                this.shakeIntensity = 1.5; // Trigger shake
+                this.shakeIntensity = 1.0; // Camera shake!
 
-                // 1. Lots of particles
-                const particleCount = 80;
+                // 1. Particles
+                const particleCount = 60;
                 const geometry = new THREE.BufferGeometry();
                 const positions = [];
                 const velocities = [];
                 for (let i = 0; i < particleCount; i++) {
                     positions.push(pos.x, pos.y, pos.z);
-                    const speed = Math.random() * 2 + 1;
+                    const speed = Math.random() * 3 + 1;
                     velocities.push( (Math.random()-0.5)*speed, (Math.random()-0.5)*speed, (Math.random()-0.5)*speed );
                 }
                 geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-                const mat = new THREE.PointsMaterial({ color: color, size: 1.0, transparent: true, blending: THREE.AdditiveBlending });
+                const mat = new THREE.PointsMaterial({ color: color, size: 0.9, transparent: true, blending: THREE.AdditiveBlending });
                 const points = new THREE.Points(geometry, mat);
                 this.scene.add(points);
-                this.particles.push({ mesh: points, vels: velocities, life: 1.5 }); // Longer life
+                this.particles.push({ mesh: points, vels: velocities, life: 1.0 });
 
-                // 2. Shockwave Sphere
-                const sphereGeo = new THREE.SphereGeometry(2, 16, 16);
-                const sphereMat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.8, wireframe: true });
-                const sphere = new THREE.Mesh(sphereGeo, sphereMat);
-                sphere.position.copy(pos);
-                this.scene.add(sphere);
-                this.shockwaves.push({ mesh: sphere, scale: 1.0, opacity: 0.8 });
+                // 2. Shockwave Ring
+                const ringGeo = new THREE.RingGeometry(0.1, 0.5, 32);
+                const ringMat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.8, side: THREE.DoubleSide });
+                const ring = new THREE.Mesh(ringGeo, ringMat);
+                ring.position.copy(pos);
+                ring.lookAt(this.camera.position);
+                this.scene.add(ring);
+                this.shockwaves.push({ mesh: ring, scale: 1.0, opacity: 0.8 });
 
-                // 3. Flash Light
-                const light = new THREE.PointLight(color, 2, 50);
+                // 3. Flash
+                const light = new THREE.PointLight(color, 3, 40);
                 light.position.copy(pos);
                 this.scene.add(light);
                 setTimeout(() => this.scene.remove(light), 100);
@@ -385,12 +394,12 @@
             loop() {
                 requestAnimationFrame(() => this.loop());
                 
-                // Screen Shake Logic
+                // Camera Shake
                 if (this.shakeIntensity > 0) {
                     const rx = (Math.random() - 0.5) * this.shakeIntensity;
                     const ry = (Math.random() - 0.5) * this.shakeIntensity;
                     this.camera.position.set(rx, 3 + ry, 25);
-                    this.shakeIntensity -= 0.1;
+                    this.shakeIntensity -= 0.05;
                     if(this.shakeIntensity < 0) {
                         this.shakeIntensity = 0;
                         this.camera.position.set(0, 3, 25);
@@ -399,6 +408,7 @@
 
                 this.renderer.render(this.scene, this.camera);
 
+                // Menu animation
                 if(this.state !== 'PLAYING') {
                     this.stars.rotation.z += 0.01;
                     return;
@@ -407,10 +417,15 @@
                 const delta = this.clock.getDelta();
                 const time = this.clock.getElapsedTime();
 
+                // Move environment
                 this.stars.rotation.z += 0.05 * delta;
                 this.grid.position.z = (time * 20) % 20;
 
-                // Spawning
+                // Animate Player (Idle)
+                this.playerGroup.rotation.z = Math.PI + Math.sin(time * 2) * 0.05;
+                this.playerGroup.rotation.x = Math.sin(time * 1.5) * 0.05;
+
+                // Spawn Enemies
                 if (time * 1000 - this.lastSpawn > this.spawnRate) {
                     this.enemies.push(this.createEnemy());
                     this.lastSpawn = time * 1000;
@@ -453,8 +468,8 @@
                 // Update Shockwaves
                 for (let i = this.shockwaves.length - 1; i >= 0; i--) {
                     const s = this.shockwaves[i];
-                    s.scale += delta * 10;
-                    s.opacity -= delta * 1.5;
+                    s.scale += delta * 15;
+                    s.opacity -= delta * 2;
                     s.mesh.scale.set(s.scale, s.scale, s.scale);
                     s.mesh.material.opacity = s.opacity;
                     if(s.opacity <= 0) {
@@ -469,6 +484,7 @@
                 let s = ""; for(let i=0; i<this.lives; i++) s += "❤️"; document.getElementById('hud-lives').innerText = s;
                 this.audio.playLifeLost();
                 this.combo = 0; document.getElementById('combo-bar').style.width = "0%";
+                this.shakeIntensity = 2.0; // Big shake on hit
                 if (this.lives <= 0) this.gameOver();
             }
 
@@ -479,6 +495,7 @@
                 let targetIdx = -1;
                 let maxZ = -Infinity;
 
+                // Find closest enemy matching key
                 for(let i=0; i<this.enemies.length; i++) {
                     if(this.enemies[i].char === key.toLowerCase()) {
                         if(this.enemies[i].mesh.position.z > maxZ) {
@@ -505,7 +522,8 @@
                         this.combo++;
                         this.addScore(100 * this.weaponLevel * (e.maxHp)); 
                     } else {
-                        e.mesh.scale.multiplyScalar(0.85);
+                        // Hit but not dead
+                        e.mesh.scale.multiplyScalar(0.9);
                         e.mesh.material.color.setHex(0xffffff);
                         setTimeout(() => e.mesh.material.color.copy(e.color), 50);
                     }
@@ -584,17 +602,21 @@
                 this.lives = 3;
                 this.combo = 0;
                 this.weaponLevel = 1;
+                
+                // Clear old meshes
                 this.enemies.forEach(e => this.scene.remove(e.mesh));
                 this.enemies = [];
                 this.particles.forEach(p => this.scene.remove(p.mesh));
                 this.particles = [];
                 this.shockwaves.forEach(s => this.scene.remove(s.mesh));
                 this.shockwaves = [];
+
                 this.lvl2Group.visible = false;
                 this.lvl3Group.visible = false;
                 document.getElementById('hud-weapon').innerText = "LASER MK-1";
                 document.getElementById('hud-lives').innerText = "❤️❤️❤️";
                 document.getElementById('hud-score').innerText = "0";
+                
                 this.clock.start();
                 this.audio.startMusic();
             }
