@@ -28,10 +28,10 @@
         body { margin: 0; overflow: hidden; font-family: 'Fredoka', sans-serif; background-color: #E2F0CB; color: var(--text); user-select: none; }
         #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; transition: filter 0.3s; }
 
-        /* --- GLOBAL BACKGROUND --- */
+        /* --- GLOBAL BACKGROUND (Main Game) --- */
         #global-bg {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            z-index: 90; 
+            z-index: 0; 
             background: linear-gradient(120deg, #FF9AA2, #FFB7B2, #FFDAC1, #E2F0CB, #B5EAD7, #C7CEEA);
             background-size: 400% 400%;
             animation: rainbowBG 15s ease infinite;
@@ -171,8 +171,16 @@
 <body>
 
     <div id="canvas-container"></div>
+    <canvas id="mini-game-canvas"></canvas>
+
+    <div id="bonus-letter-display">A</div>
+    
     <div id="global-bg">
         <canvas id="bg-canvas"></canvas>
+    </div>
+
+    <div id="minigame-ui" class="hidden">
+        <button class="btn small" id="btn-skip-bonus">Überspringen ⏭️</button>
     </div>
 
     <div id="level-flash">
@@ -267,7 +275,7 @@
             <div class="setting-group">
                 <label>💥 Treffer-Effekt</label>
                 <select id="sel-expl">
-                    <option value="on" selected>Feuerwerk & Einblenden</option>
+                    <option value="on">Feuerwerk & Einblenden</option>
                     <option value="ultra">ULTRA Explosion 🔥</option>
                     <option value="grow" selected>Grow (Serie wächst) 🌱</option>
                     <option value="off">Sofort ersetzen (Aus)</option>
@@ -277,7 +285,7 @@
                 <label>🤸 Tier Animation</label>
                 <select id="sel-anim">
                     <option value="jump">⬆️ Springen</option>
-                    <option value="chase">🏃 Jagd (Hin & Her)</option>
+                    <option value="chase">🏃 Jagd (Taktisch)</option>
                     <option value="spin">😵‍💫 Drehen</option>
                     <option value="wink">😉 Zwinkern</option>
                     <option value="mouth">👄 Mund bewegen</option>
@@ -1246,10 +1254,27 @@
                 document.getElementById('btn-quit').onclick = () => { this.togglePause(); this.toMenu(); };
                 document.getElementById('btn-modal-action').onclick = () => this.handleNextAction();
                 this.ui.buttons.repeat.onclick = () => { this.ui.screens.modal.classList.add('hidden'); this.startLevel(this.currentLevelIdx); };
-                this.ui.buttons.directNext.onclick = () => { this.ui.screens.modal.classList.add('hidden'); if(this.currentLevelIdx + 1 < LEVELS.length) this.startLevel(this.currentLevelIdx + 1); };
-                window.addEventListener('keydown', (e) => { if (e.key === "Shift") this.toggleKeyboardShift(true); if (e.key === "Enter") { if (!this.ui.screens.start.classList.contains('hidden')) this.startGame(); else if (!this.ui.screens.level.classList.contains('hidden')) { } else if (!this.ui.screens.modal.classList.contains('hidden')) this.handleNextAction(); } else if (e.key === "Escape") { if (this.isGameActive || this.isPaused) this.togglePause(); } else { this.handleTyping(e); } });
-                window.addEventListener('keyup', (e) => { if (e.key === "Shift") this.toggleKeyboardShift(false); this.handleKeyUp(e); });
+                this.ui.buttons.directNext.onclick = () => { 
+                    this.ui.screens.modal.classList.add('hidden'); 
+                    if(this.currentLevelIdx + 1 < LEVELS.length) this.startLevel(this.currentLevelIdx + 1); 
+                };
+
+                window.addEventListener('keydown', (e) => {
+                    if (e.key === "Shift") this.toggleKeyboardShift(true);
+                    if (e.key === "Enter") {
+                        if (!this.ui.screens.start.classList.contains('hidden')) this.startGame();
+                        else if (!this.ui.screens.level.classList.contains('hidden')) { /* Do nothing on enter in menu */ }
+                        else if (!this.ui.screens.modal.classList.contains('hidden')) this.handleNextAction();
+                    } else if (e.key === "Escape") { if (this.isGameActive || this.isPaused) this.togglePause(); }
+                    else { this.handleTyping(e); }
+                });
+                
+                window.addEventListener('keyup', (e) => {
+                    if (e.key === "Shift") this.toggleKeyboardShift(false);
+                    this.handleKeyUp(e);
+                });
             }
+
             closeOptions() {
                 this.audio.setSettings(this.ui.inputs.sfx.value, this.ui.inputs.bgm.value);
                 this.world.setMascot(this.ui.inputs.mascot.value);
@@ -1259,14 +1284,50 @@
                 this.kbColor = this.ui.inputs.kbColor.value;
                 this.kbError = this.ui.inputs.kbError.value;
                 this.explEnabled = this.ui.inputs.expl.value; 
-                this.initKeyboardUI(); this.resumeGameAfterMenu();
+                this.initKeyboardUI(); 
+                this.resumeGameAfterMenu();
             }
-            resumeGameAfterMenu() { if(this.isGameActive) { this.isPaused = false; this.world.container.style.filter = "none"; this.ui.bgContainer.style.display = 'none'; this.initBackgroundEffect('none'); this.showScreen('game'); } else { this.ui.bgContainer.style.display = 'block'; this.initBackgroundEffect('rain'); this.showScreen('level'); } }
+
+            resumeGameAfterMenu() { 
+                if(this.isGameActive) { 
+                    this.isPaused = false; 
+                    this.world.container.style.filter = "none"; 
+                    this.ui.bgContainer.style.display = 'none'; 
+                    this.initBackgroundEffect('none');
+                    this.showScreen('game'); 
+                } else { 
+                    this.ui.bgContainer.style.display = 'block'; 
+                    this.initBackgroundEffect('rain'); 
+                    this.showScreen('level'); 
+                } 
+            }
             toggleBtnVisual(btn, isActive) { if (isActive) { btn.classList.remove('toggle-off'); btn.classList.add('toggle-on'); } else { btn.classList.remove('toggle-on'); btn.classList.add('toggle-off'); } }
+            
             startGame() { this.audio.init(); this.showScreen('level'); }
-            toMenu() { this.isGameActive = false; this.isPaused = false; this.ui.bgContainer.style.display = 'block'; this.initBackgroundEffect('rain'); this.showScreen('level'); }
-            togglePause(forcePause = false) { if (!this.isGameActive && !this.isPaused && !forcePause) return; if (forcePause) this.isPaused = false; this.isPaused = !this.isPaused; if (this.isPaused) { this.ui.screens.pause.classList.remove('hidden'); this.world.container.style.filter = "blur(5px)"; } else { this.ui.screens.pause.classList.add('hidden'); this.world.container.style.filter = "none"; } }
-            showScreen(name) { Object.values(this.ui.screens).forEach(el => el.classList.add('hidden')); if (name === 'game') this.ui.screens.game.classList.remove('hidden'); else if (name === 'level') { this.renderLevelSelect(); this.ui.screens.level.classList.remove('hidden'); } else if (name === 'start') this.ui.screens.start.classList.remove('hidden'); else if (name === 'modal') this.ui.screens.modal.classList.remove('hidden'); else if (name === 'pause') this.ui.screens.pause.classList.remove('hidden'); else if (name === 'options') this.ui.screens.options.classList.remove('hidden'); }
+            toMenu() { 
+                this.isGameActive = false; this.isPaused = false; 
+                this.ui.bgContainer.style.display = 'block'; 
+                this.initBackgroundEffect('rain'); 
+                this.showScreen('level'); 
+            }
+            togglePause(forcePause = false) {
+                if (!this.isGameActive && !this.isPaused && !forcePause) return;
+                if (forcePause) this.isPaused = false;
+                this.isPaused = !this.isPaused;
+                if (this.isPaused) { this.ui.screens.pause.classList.remove('hidden'); this.world.container.style.filter = "blur(5px)"; } 
+                else { this.ui.screens.pause.classList.add('hidden'); this.world.container.style.filter = "none"; }
+            }
+
+            showScreen(name) {
+                Object.values(this.ui.screens).forEach(el => el.classList.add('hidden'));
+                if (name === 'game') this.ui.screens.game.classList.remove('hidden');
+                else if (name === 'level') { this.renderLevelSelect(); this.ui.screens.level.classList.remove('hidden'); }
+                else if (name === 'start') this.ui.screens.start.classList.remove('hidden');
+                else if (name === 'modal') this.ui.screens.modal.classList.remove('hidden');
+                else if (name === 'pause') this.ui.screens.pause.classList.remove('hidden');
+                else if (name === 'options') this.ui.screens.options.classList.remove('hidden');
+            }
+
             startLevel(index) {
                 if (index >= LEVELS.length) index = 0;
                 this.currentLevelIdx = index;
@@ -1285,9 +1346,22 @@
                 this.ui.flashTitle.textContent = lvlName;
                 let count = 3;
                 this.ui.flashCount.textContent = count;
-                const countdown = setInterval(() => { count--; if(count > 0) { this.ui.flashCount.textContent = count; } else if (count === 0) { this.ui.flashCount.textContent = "LOS!"; this.isGameActive = true; this.startTime = Date.now(); } else { clearInterval(countdown); this.ui.flash.style.opacity = "0"; } }, 1000);
+                const countdown = setInterval(() => {
+                    count--;
+                    if(count > 0) {
+                        this.ui.flashCount.textContent = count;
+                    } else if (count === 0) {
+                        this.ui.flashCount.textContent = "LOS!";
+                        this.isGameActive = true;
+                        this.startTime = Date.now();
+                    } else {
+                        clearInterval(countdown);
+                        this.ui.flash.style.opacity = "0";
+                    }
+                }, 1000);
                 this.updateDisplay(false); this.showScreen('game'); this.highlightKey(this.targetString[0]);
             }
+
             triggerCharExplosion() {
                 const el = this.ui.display.current;
                 const rect = el.getBoundingClientRect();
@@ -1296,12 +1370,23 @@
                 let count = 12; let scaleBase = 1; let velocityBase = 100;
                 if (this.explEnabled === 'ultra') { count = 100; velocityBase = 250; } else if (this.explEnabled === 'grow') { count = 12 + Math.min(this.streak * 2, 50); scaleBase = 1 + Math.min(this.streak * 0.1, 3); velocityBase = 100 + Math.min(this.streak * 10, 200); }
                 for(let i=0; i<count; i++) {
-                    const p = document.createElement('div'); p.classList.add('particle'); document.body.appendChild(p);
-                    p.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)]; p.style.left = center.x + 'px'; p.style.top = center.y + 'px';
-                    const angle = Math.random() * Math.PI * 2; const velocity = 50 + Math.random() * velocityBase; const tx = Math.cos(angle) * velocity; const ty = Math.sin(angle) * velocity;
-                    p.animate([ { transform: `translate(0,0) scale(${scaleBase})`, opacity: 1 }, { transform: `translate(${tx}px, ${ty}px) scale(0)`, opacity: 0 } ], { duration: 500 + Math.random() * 200, easing: 'ease-out' }).onfinish = () => p.remove();
+                    const p = document.createElement('div');
+                    p.classList.add('particle');
+                    document.body.appendChild(p);
+                    p.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                    p.style.left = center.x + 'px';
+                    p.style.top = center.y + 'px';
+                    const angle = Math.random() * Math.PI * 2;
+                    const velocity = 50 + Math.random() * velocityBase;
+                    const tx = Math.cos(angle) * velocity; 
+                    const ty = Math.sin(angle) * velocity;
+                    p.animate([
+                        { transform: `translate(0,0) scale(${scaleBase})`, opacity: 1 },
+                        { transform: `translate(${tx}px, ${ty}px) scale(0)`, opacity: 0 }
+                    ], { duration: 500 + Math.random() * 200, easing: 'ease-out' }).onfinish = () => p.remove();
                 }
             }
+
             handleTyping(e) {
                 if (!this.isGameActive || this.isPaused) return;
                 let char = e.key; const keyEl = this.findKeyElement(char); const expected = this.targetString[this.currentIndex];
@@ -1311,19 +1396,40 @@
                     this.audio.playCorrect(this.currentIndex); this.score += 10; this.streak++; 
                     if(this.explEnabled !== 'off') this.triggerCharExplosion();
                     this.currentIndex++; this.world.triggerReaction(); this.world.stepChase('player'); 
-                    if (this.currentIndex >= this.targetString.length) { this.levelComplete(); } else { this.updateDisplay(this.explEnabled !== 'off'); this.highlightKey(this.targetString[this.currentIndex]); }
+                    if (this.currentIndex >= this.targetString.length) { 
+                        this.levelComplete(); 
+                    } else { 
+                        this.updateDisplay(this.explEnabled !== 'off'); 
+                        this.highlightKey(this.targetString[this.currentIndex]); 
+                    }
                 } else {
                     if (char.length === 1) { 
                         this.errors++; this.streak = 0; 
-                        if (keyEl && this.kbError === 'flash') { keyEl.classList.add('error-flash'); setTimeout(() => keyEl.classList.remove('error-flash'), 200); } else if(keyEl) { keyEl.classList.add('pressed'); }
-                        this.typedHistory.push({ char: char, type: 'wrong' }); this.audio.playWrong(); this.ui.display.current.classList.add('shake'); setTimeout(() => this.ui.display.current.classList.remove('shake'), 300); this.world.stepChase('npc'); 
+                        if (keyEl && this.kbError === 'flash') {
+                            keyEl.classList.add('error-flash');
+                            setTimeout(() => keyEl.classList.remove('error-flash'), 200);
+                        } else if(keyEl) {
+                            keyEl.classList.add('pressed');
+                        }
+                        this.typedHistory.push({ char: char, type: 'wrong' });
+                        this.audio.playWrong(); this.ui.display.current.classList.add('shake'); setTimeout(() => this.ui.display.current.classList.remove('shake'), 300); 
+                        this.world.stepChase('npc'); 
                     }
                 }
                 this.ui.display.score.innerText = this.score;
             }
+
             handleKeyUp(e) { const keyEl = this.findKeyElement(e.key); if (keyEl) keyEl.classList.remove('pressed'); }
-            findKeyElement(char) { const lower = char.toLowerCase(); if (char === " ") return document.querySelector('.key.space'); try { return document.querySelector(`.key[data-char='${lower}']`); } catch(e) { return null; } }
-            highlightKey(char) { document.querySelectorAll('.key.active').forEach(el => el.classList.remove('active')); const el = this.findKeyElement(char); if (el) el.classList.add('active'); }
+            findKeyElement(char) { 
+                const lower = char.toLowerCase(); 
+                if (char === " ") return document.querySelector('.key.space'); 
+                try { return document.querySelector(`.key[data-char='${lower}']`); } catch(e) { return null; }
+            }
+            highlightKey(char) { 
+                document.querySelectorAll('.key.active').forEach(el => el.classList.remove('active')); 
+                const el = this.findKeyElement(char); 
+                if (el) el.classList.add('active'); 
+            }
             updateDisplay(animate = false) {
                 const current = this.targetString[this.currentIndex];
                 const next = this.targetString.substring(this.currentIndex + 1, this.currentIndex + 10);
@@ -1335,85 +1441,127 @@
                 const pct = (this.currentIndex / this.targetString.length) * 100;
                 this.ui.display.bar.style.width = `${pct}%`;
             }
+
             spawnModalEffects(stars) {
                 const colors = ['#FFD700', '#FF4500', '#1E90FF', '#32CD32'];
                 const count = stars * 10 + 20; 
                 for(let i=0; i<count; i++) {
-                    const p = document.createElement('div'); p.classList.add('particle', 'star'); p.style.backgroundColor = colors[Math.floor(Math.random()*colors.length)]; document.getElementById('modal-screen').appendChild(p);
-                    p.style.left = '50%'; p.style.top = '30%'; const angle = Math.random() * Math.PI * 2; const vel = 100 + Math.random() * 200;
-                    p.animate([ { transform: 'translate(-50%, -50%) scale(0)', opacity: 1 }, { transform: `translate(calc(-50% + ${Math.cos(angle)*vel}px), calc(-50% + ${Math.sin(angle)*vel + 100}px)) rotate(${Math.random()*360}deg)`, opacity: 0 } ], { duration: 1000 + Math.random()*1000, easing: 'ease-out' }).onfinish = () => p.remove();
+                    const p = document.createElement('div');
+                    p.classList.add('particle', 'star');
+                    p.style.backgroundColor = colors[Math.floor(Math.random()*colors.length)];
+                    document.getElementById('modal-screen').appendChild(p);
+                    p.style.left = '50%'; p.style.top = '30%';
+                    const angle = Math.random() * Math.PI * 2;
+                    const vel = 100 + Math.random() * 200;
+                    p.animate([
+                        { transform: 'translate(-50%, -50%) scale(0)', opacity: 1 },
+                        { transform: `translate(calc(-50% + ${Math.cos(angle)*vel}px), calc(-50% + ${Math.sin(angle)*vel + 100}px)) rotate(${Math.random()*360}deg)`, opacity: 0 }
+                    ], { duration: 1000 + Math.random()*1000, easing: 'ease-out' }).onfinish = () => p.remove();
                 }
             }
+
             levelComplete() {
                 this.isGameActive = false;
-                const totalChars = this.targetString.length; const durationMinutes = (Date.now() - this.startTime) / 60000; const cpm = totalChars / durationMinutes; const targetCPM = 60; 
+                const totalChars = this.targetString.length;
+                const durationMinutes = (Date.now() - this.startTime) / 60000;
+                const cpm = totalChars / durationMinutes;
+                const targetCPM = 60; 
                 let speedPct = Math.round((cpm / targetCPM) * 100); if(speedPct > 100) speedPct = 100;
-                const totalKeystrokes = totalChars + this.errors; let accPct = 100; if(totalKeystrokes > 0) accPct = Math.round(((totalChars) / totalKeystrokes) * 100); if(accPct < 0) accPct = 0;
-                let stars = 1; if (speedPct >= 40 && accPct >= 40) stars = 2; if (speedPct >= 60 && accPct >= 60) stars = 3; if (speedPct >= 80 && accPct >= 80) stars = 4; if (speedPct >= 100 && accPct >= 100) stars = 5;
-                const lvlId = LEVELS[this.currentLevelIdx].id; const oldScore = this.scores[lvlId] || 0;
-                if(stars > oldScore) { this.scores[lvlId] = stars; localStorage.setItem(`tastenZauberScores_${this.currentUser}`, JSON.stringify(this.scores)); }
+                const totalKeystrokes = totalChars + this.errors;
+                let accPct = 100; if(totalKeystrokes > 0) accPct = Math.round(((totalChars) / totalKeystrokes) * 100); if(accPct < 0) accPct = 0;
+                
+                let stars = 1; 
+                if (speedPct >= 40 && accPct >= 40) stars = 2; 
+                if (speedPct >= 60 && accPct >= 60) stars = 3; 
+                if (speedPct >= 80 && accPct >= 80) stars = 4; 
+                if (speedPct >= 100 && accPct >= 100) stars = 5;
+
+                const lvlId = LEVELS[this.currentLevelIdx].id;
+                const oldScore = this.scores[lvlId] || 0;
+                if(stars > oldScore) {
+                    this.scores[lvlId] = stars;
+                    localStorage.setItem(`tastenZauberScores_${this.currentUser}`, JSON.stringify(this.scores));
+                }
+                
                 if(stars === 5) this.audio.playSuperWin(); else this.audio.playWin();
                 this.spawnModalEffects(stars);
-                this.ui.bgContainer.style.display = 'block'; this.initBackgroundEffect('animals', lvlId); 
-                const modalTitle = document.getElementById('modal-title'); const starDisplay = document.getElementById('result-stars'); const barSpeed = document.getElementById('bar-speed'); const barAcc = document.getElementById('bar-acc'); const lblSpeed = document.getElementById('lbl-speed'); const lblAcc = document.getElementById('lbl-acc'); const modalBtn = document.getElementById('btn-modal-action'); const textDisplay = document.getElementById('result-text-display');
-                const btnDirect = this.ui.buttons.directNext; const nextLvlIdx = this.currentLevelIdx + 1; let nextLocked = false;
-                if(nextLvlIdx % 10 === 0 && nextLvlIdx < LEVELS.length) { const requiredBlock = Math.floor(nextLvlIdx / 10); if(requiredBlock > this.checkBlockUnlock()) nextLocked = true; }
-                if (nextLvlIdx < LEVELS.length && !nextLocked) { btnDirect.classList.remove('hidden'); btnDirect.innerText = `Zu Level ${LEVELS[nextLvlIdx].id}`; } else { btnDirect.classList.add('hidden'); }
+
+                this.ui.bgContainer.style.display = 'block';
+                this.initBackgroundEffect('animals', lvlId); 
+
+                const modalTitle = document.getElementById('modal-title');
+                const starDisplay = document.getElementById('result-stars');
+                const barSpeed = document.getElementById('bar-speed');
+                const barAcc = document.getElementById('bar-acc');
+                const lblSpeed = document.getElementById('lbl-speed');
+                const lblAcc = document.getElementById('lbl-acc');
+                const modalBtn = document.getElementById('btn-modal-action');
+                const textDisplay = document.getElementById('result-text-display');
+                
+                const btnDirect = this.ui.buttons.directNext;
+                const nextLvlIdx = this.currentLevelIdx + 1;
+                let nextLocked = false;
+                if(nextLvlIdx % 10 === 0 && nextLvlIdx < LEVELS.length) {
+                    const requiredBlock = Math.floor(nextLvlIdx / 10);
+                    if(requiredBlock > this.checkBlockUnlock()) nextLocked = true; 
+                }
+
+                if (nextLvlIdx < LEVELS.length && !nextLocked) {
+                    btnDirect.classList.remove('hidden');
+                    btnDirect.innerText = `Zu Level ${LEVELS[nextLvlIdx].id}`;
+                } else {
+                    btnDirect.classList.add('hidden'); 
+                }
+
                 modalTitle.innerText = stars === 5 ? "Perfekt! Legendär!" : "Level geschafft!";
-                let starStr = ""; if(stars===1) starStr = "⭐"; if(stars===2) starStr = "⭐⭐"; if(stars===3) starStr = "⭐⭐⭐"; if(stars===4) starStr = "⭐⭐⭐⭐"; if(stars===5) starStr = "🌟🌟🌟🌟🌟";
-                starDisplay.innerText = starStr; starDisplay.className = "result-stars pop-stars" + (stars === 5 ? " five-stars" : "");
-                lblSpeed.innerText = speedPct + "%"; lblAcc.innerText = accPct + "%"; barSpeed.style.width = "0%"; barAcc.style.width = "0%";
+                let starStr = ""; 
+                if(stars===1) starStr = "⭐"; 
+                if(stars===2) starStr = "⭐⭐"; 
+                if(stars===3) starStr = "⭐⭐⭐"; 
+                if(stars===4) starStr = "⭐⭐⭐⭐";
+                if(stars===5) starStr = "🌟🌟🌟🌟🌟";
+                
+                starDisplay.innerText = starStr;
+                starDisplay.className = "result-stars pop-stars" + (stars === 5 ? " five-stars" : "");
+                
+                lblSpeed.innerText = speedPct + "%"; lblAcc.innerText = accPct + "%";
+                barSpeed.style.width = "0%"; barAcc.style.width = "0%";
                 setTimeout(() => { barSpeed.style.width = speedPct + "%"; barAcc.style.width = accPct + "%"; }, 100);
-                textDisplay.innerHTML = ""; this.typedHistory.forEach(item => { const span = document.createElement('span'); span.textContent = item.char; span.className = item.type === 'correct' ? 'res-char correct' : 'res-char wrong'; textDisplay.appendChild(span); });
+                
+                textDisplay.innerHTML = "";
+                this.typedHistory.forEach(item => { const span = document.createElement('span'); span.textContent = item.char; span.className = item.type === 'correct' ? 'res-char correct' : 'res-char wrong'; textDisplay.appendChild(span); });
+                
                 if (this.isLooping) modalBtn.innerText = "Wiederholen (Enter)"; else if (this.noBonus) modalBtn.innerText = "Nächstes Level (Enter)"; else modalBtn.innerText = "Bonus spielen (Enter)";
                 this.showScreen('modal');
             }
+
             handleNextAction() {
                 this.ui.screens.modal.classList.add('hidden');
                 
-                // If Looping is ON, ignore bonus
-                if (this.isLooping) {
+                // If Looping is ON, ignore bonus and restart level
+                const isLooping = document.getElementById('btn-loop').classList.contains('toggle-on');
+                if (isLooping) {
                     this.startLevel(this.currentLevelIdx);
                     return;
                 }
 
-                // --- CHANGE HERE: REDIRECT TO BONUS.HTML ---
-                if (!this.noBonus) { // if bonus is enabled (not noBonus)
-                    // Save letters for the bonus game
+                // Check for Bonus Toggle
+                const isBonusOn = document.getElementById('btn-bonus').classList.contains('toggle-on');
+                
+                if (isBonusOn) {
+                    // SAVE DATA FOR BONUS PAGE
                     const lvlKeys = LEVELS[this.currentLevelIdx].keys;
                     localStorage.setItem('tastenZauber_bonusKeys', lvlKeys);
-                    
-                    // Redirect to the new file
+                    // Redirect
                     window.location.href = 'bonus.html';
                 } else {
-                    if (this.noBonus) {
-                        if(!this.ui.buttons.directNext.classList.contains('hidden')) {
-                            this.startLevel(this.currentLevelIdx + 1); 
-                        } else {
-                            this.showScreen('level');
-                        }
+                    // Normal behavior: next level or menu if no next level
+                    if(!this.ui.buttons.directNext.classList.contains('hidden')) {
+                        this.startLevel(this.currentLevelIdx + 1); 
                     } else {
-                         // Fallback to internal minigame if file fails? No, we trust the file exists.
-                         this.startMiniGame(); // Keep original call just in case logic fails, but href above should catch it.
+                        this.showScreen('level');
                     }
                 }
-            }
-            startMiniGame() {
-                // This function is kept for safety but effectively bypassed by the href redirect above.
-                // It's the old internal game logic.
-                this.showScreen('none');
-                this.ui.bgContainer.style.display = 'none';
-                this.initBackgroundEffect('none');
-                this.ui.miniUi.classList.remove('hidden'); 
-                this.ui.bonusLetter.classList.add('visible'); 
-
-                const canvas = document.getElementById('mini-game-canvas'); 
-                canvas.style.display = 'block';
-                const ctx = canvas.getContext('2d'); 
-                
-                this.world.enterBonusMode();
-
-                // ... (rest of old logic hidden here just in case)
             }
         }
         window.onload = () => { const app = new Game(); };
